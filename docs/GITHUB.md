@@ -15,13 +15,13 @@ There is **no** `template` remote and no expectation to `git pull` old commits. 
 git push -u origin main
 ```
 
-If the remote still has unrelated history and you intend to **replace** the default branch with this project (destructive on GitHub):
+If `git push` is rejected because the remote has **old, unrelated history** (same situation as when this project replaced the previous `manim-hebrew-template` tree), overwrite `main` deliberately:
 
 ```bash
-git push --force-with-lease origin main
+git push --force origin main
 ```
 
-Use `--force-with-lease` only when you are sure you want to overwrite `main` on GitHub. Prefer coordinating with anyone else who uses the repo.
+Use only when you intend to **replace** the GitHub branch entirely. `--force-with-lease` is safer if others might push between your fetch and push.
 
 ## Clone for others
 
