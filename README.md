@@ -1,5 +1,7 @@
 # Hebrew + math in Manim (`hebrew_utils`)
 
+**עברית:** [`README.he.md`](README.he.md)
+
 This project helps you mix **Hebrew text** and **inline LaTeX math** in a **single** [`Tex`](https://docs.manim.community/en/stable/reference/manim.mobject.text.tex_mobject.Tex.html) mobject, then animate it in a sensible order: Hebrew in **RTL** “writing” order, math in **left‑to‑right** glyph order.
 
 Everything lives in **`hebrew_utils.py`**. Import it from your Manim scene file and set the template once (see below).
@@ -111,7 +113,7 @@ for i in range(len(tex_parts)):
         self.wait(1)  # example: pause after the third segment
 ```
 
-See `Tests.py` (`TexLineScene`) for a minimal full example.
+See `segment_pause_scene.py` (`SegmentPauseDemo`) for a minimal example with per-segment timing and a pause.
 
 Scaling the **whole** line to one duration is still: `self.play(SmartHebWrite(...), run_time=T)`.
 
@@ -152,21 +154,7 @@ The macro is defined in `get_hebrew_template()`; it should not add visible ink.
 
 ---
 
-## 6. Unit tests (no video)
-
-Partition / segmentation logic for **collapsed** SVG layouts is covered by unit tests (fake glyph positions, no Manim render):
-
-```bash
-python -m unittest discover -s tests -v
-# or
-python -m unittest tests.test_hebrew_utils -v
-```
-
-You can still sanity-check `resolve_tex_inline_math_glyphs` in one-off scripts; the tests focus on `_partition_hebrew_for_collapsed` behavior.
-
----
-
-## 7. Rendering a Manim scene
+## 6. Rendering a Manim scene
 
 From your project folder, with your scene file and class name:
 
@@ -178,7 +166,7 @@ manim -pql your_scene.py YourSceneName
 
 ---
 
-## 8. Troubleshooting
+## 7. Troubleshooting
 
 | Symptom | What it usually means |
 |--------|-------------------------|
@@ -188,7 +176,7 @@ manim -pql your_scene.py YourSceneName
 
 ---
 
-## 9. Compatibility note
+## 8. Compatibility note
 
 This module is written for **Manim Community** APIs (`Tex`, `MathTex`, `config.tex_template`, etc.). If you use a different Manim fork, small import or API tweaks may be needed.
 

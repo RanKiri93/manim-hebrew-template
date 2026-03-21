@@ -14,7 +14,7 @@
 ## Animations (`hebrew_utils`)
 
 - **Full line in source order** (0, 1, 2, …): `SmartHebWrite(tex, tex_strings_source=parts)` — not spatial left/right order.
-- **Per-segment duration or pauses**: loop `for i in range(len(parts)):` → `self.play(smart_heb_write_segment(tex, segment_index=i, tex_strings_source=parts, run_time=...))`, then `self.wait(...)` as needed. Use a tuple/list of `run_time`s aligned with `tex_strings` indices. Example: `Tests.py` (`TexLineScene`).
+- **Per-segment duration or pauses**: loop `for i in range(len(parts)):` → `self.play(smart_heb_write_segment(tex, segment_index=i, tex_strings_source=parts, run_time=...))`, then `self.wait(...)` as needed. Use a tuple/list of `run_time`s aligned with `tex_strings` indices. Example: `segment_pause_scene.py` (`SegmentPauseDemo`).
 - **Uniform stretch of the whole line**: `self.play(SmartHebWrite(...), run_time=T)` — scales the entire composed animation.
 - **Hebrew ↔ math handoff feel** (single `SmartHebWrite` only): outer segment overlap is `_SMART_HEB_WRITE_SEGMENT_LAG_RATIO` in `hebrew_utils.py` — change only there unless the user asks for inner `lag_ratio` / `math_inner_lag_ratio` tweaks.
 - **Collapsed SVG**: coloring and write use the same partition as `SmartHebWrite` / `smart_heb_write_segment`; not every exotic layout is guaranteed — prefer consistent `tex_strings_source=parts` and optional `MANIM_MATH_MARK` if grouping is flaky.
@@ -34,7 +34,7 @@
 ## Warnings and tests
 
 - Manim may log **“Could not find SVG group for tex part …”** with Hebrew/XeLaTeX; resolution often still works via **fallback** logic. Don’t treat every warning as failure without checking the render.
-- **Unit tests** (`python -m unittest discover -s tests -v`) do **not** render video. **Preview renders**: `manim -pql scene_file.py SceneName`.
+- **Preview renders**: `manim -pql scene_file.py SceneName` (sample scenes live in the repo root).
 - On **PowerShell**, avoid embedding **`$`** in one-liner commands; use a **`.py` file** or careful quoting.
 
 ## Code style (this repo)
