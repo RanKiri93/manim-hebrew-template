@@ -1,0 +1,44 @@
+﻿# Manim output (videos, frames, partials, compiled Tex intermediates)
+media/
+
+# Videos — explicit recursive globs + typical Manim folders (nested paths)
+**/*.mp4
+**/*.webm
+**/*.gif
+**/*.mov
+**/*.mkv
+**/*.avi
+**/videos/
+**/partial_movie_files/
+
+# Same extensions at repo root (belt-and-suspenders)
+*.mp4
+*.webm
+*.gif
+*.mov
+*.mkv
+*.avi
+
+# Python caches & tooling
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# LaTeX / build noise
+*.log
+*.aux
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini

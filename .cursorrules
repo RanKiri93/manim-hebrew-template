@@ -1,0 +1,59 @@
+# Technion-HebrewManim — Cursor guidance
+
+## Stack
+
+- **Manim Community** (`Tex`, `MathTex`), **XeLaTeX** + Hebrew template from `hebrew_utils.get_hebrew_template()`.
+- At the top of every scene module: `config.tex_template = get_hebrew_template()` (or `enable_hebrew_globally()`). Default template uses `\everymath{\textstyle}` and `\DeclareMathSizes` (~2pt smaller math vs 10pt body); `math_pt_smaller=0` or `explicit_math_styles=False` to tune; do not use `\everydisplay` (breaks `MathTex`).
+
+## Mixed Hebrew + inline math in one `Tex`
+
+- Pass **one Python argument per segment**. Each formula must be a **single** standalone `"$...$"` string (not multiple `$...$` blocks inside one argument).
+- Pass the **same tuple** into helpers as `tex_strings_source=...` whenever the tuple is not exactly `tex.tex_strings` from a simple `Tex(*parts)` (e.g. built in steps).
+- **Dollar signs** are not reliable as drawable glyphs; math vs text is determined from **Python** `tex_strings`, not by scanning the SVG for `$` shapes.
+
+## Animations (`hebrew_utils`)
+
+- **Full line in source order** (0, 1, 2, …): `SmartHebWrite(tex, tex_strings_source=parts)` — not spatial left/right order.
+- **Per-segment duration or pauses**: loop `for i in range(len(parts)):` → `self.play(smart_heb_write_segment(tex, segment_index=i, tex_strings_source=parts, run_time=...))`, then `self.wait(...)` as needed. Use a tuple/list of `run_time`s aligned with `tex_strings` indices. Example: `Tests.py` (`TexLineScene`).
+- **Uniform stretch of the whole line**: `self.play(SmartHebWrite(...), run_time=T)` — scales the entire composed animation.
+- **Hebrew ↔ math handoff feel** (single `SmartHebWrite` only): outer segment overlap is `_SMART_HEB_WRITE_SEGMENT_LAG_RATIO` in `hebrew_utils.py` — change only there unless the user asks for inner `lag_ratio` / `math_inner_lag_ratio` tweaks.
+- **Collapsed SVG**: coloring and write use the same partition as `SmartHebWrite` / `smart_heb_write_segment`; not every exotic layout is guaranteed — prefer consistent `tex_strings_source=parts` and optional `MANIM_MATH_MARK` if grouping is flaky.
+- **Reverse order inside each formula**: `SmartHebWrite(..., reverse_math_indices=True)` or `math_formula_write_animation(..., reverse_index_order=True)`.
+- **Diagnostics**: `resolve_tex_inline_math_glyphs(tex, tex_strings_source=..., math_arg_index=...)` when there are **multiple** `$...$` arguments; `FadeInMathTexIndexLabels` for local indices 0…k−1.
+
+## Coloring parts of a `Tex`
+
+- Prefer **`set_tex_segment_color(tex, segment_index=i, color=..., tex_strings_source=parts)`** — same segmentation as `SmartHebWrite`, works when XeLaTeX **collapses** SVG groups.
+- If **`len(tex.submobjects) == len(tex.tex_strings)`**, you may use **`tex[i].set_color(...)`** instead.
+- Avoid Manim’s **`tex_to_color_map`** for mixed Hebrew lines when groups collapse — it can raise **`KeyError`** on internal SVG id maps.
+
+## Optional LaTeX hook
+
+- **`MANIM_MATH_MARK`** inside `$...$` plus `Tex(..., **tex_extra_kwargs_for_isolated_math_marker())`** for extra substring isolation (`\mkern0mu` in preamble) — no visible ink.
+
+## Warnings and tests
+
+- Manim may log **“Could not find SVG group for tex part …”** with Hebrew/XeLaTeX; resolution often still works via **fallback** logic. Don’t treat every warning as failure without checking the render.
+- **Unit tests** (`python -m unittest discover -s tests -v`) do **not** render video. **Preview renders**: `manim -pql scene_file.py SceneName`.
+- On **PowerShell**, avoid embedding **`$`** in one-liner commands; use a **`.py` file** or careful quoting.
+
+## Code style (this repo)
+
+- Prefer **small, focused** changes; match existing style in `hebrew_utils.py` and scene files.
+- Reuse **`tex_strings_source`** consistently across `Tex`, `SmartHebWrite`, `set_tex_segment_color`, and `smart_heb_write_segment`.
+
+## Local glyph-index debugger
+
+- Run **`python tools/glyph_index_preview/server.py`** from repo root, open **http://127.0.0.1:8765/** — **MathTex** + LTR leaf labels (same ordering basis as math glyph helpers). Not a browser-only LaTeX mock; it invokes Manim.
+
+## Tex / SmartHebWrite codegen (static HTML)
+
+- Open **`tools/tex_line_codegen/index.html`** — **two tabs**: **יוצר שורות** ( **`get_hebrew_template`**, **`font_size`**, **`$...$`**, **B/I/U**, colors, durations, optional **`Line`** full-line underline **`DR`→`DL`** after write) and **צירים וגרפים** (**`Axes`** / **`NumberPlane`**, **`run_time`** / **`wait`**, optional **parallel** `Create`s per row, **`plot`** + **`Dot`**). Block 1 / 2 / 3 per tab.
+
+## MCP (optional)
+
+- **`tools/hebrewmanim_mcp/server.py`** — MCP server (`pip install mcp`) for **axes/graph** codegen (`codegen_axes.py`); see **`tools/hebrewmanim_mcp/README.md`**. Tex lines still HTML-only until shared module exists.
+
+## GitHub
+
+- **`origin`** → [github.com/RanKiri93/manim-hebrew-template](https://github.com/RanKiri93/manim-hebrew-template) — this workspace is the canonical tree; see **`docs/GITHUB.md`** (no pulling legacy history from that URL).
