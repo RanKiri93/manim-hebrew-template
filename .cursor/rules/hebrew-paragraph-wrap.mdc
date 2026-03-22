@@ -1,0 +1,40 @@
+---
+description: פריסת פסקאות עברית+מתמטיקה — עטיפת שורות ויישור לימין
+alwaysApply: true
+---
+
+# Hebrew + Math — SmartHebWrite
+
+## Stack
+
+- **Manim Community** (`Tex`, `MathTex`), **XeLaTeX** + Hebrew template from `hebrew_utils.get_hebrew_template()`.
+- At the top of every scene module: `config.tex_template = get_hebrew_template()`.
+
+## Mixed Hebrew + inline math in one `Tex`
+
+- Pass **one Python argument per segment**. Each formula must be a **single** standalone `"$...$"` string.
+- Pass the **same tuple** into `SmartHebWrite` as `tex_strings_source=parts`.
+
+## Animations (`hebrew_utils`)
+
+- **Full line in source order**: `SmartHebWrite(tex, tex_strings_source=parts)` — index 0 = start of sentence (right on screen).
+- **Per-segment colors**: `colors={1: RED, 3: BLUE}` or `colors=[None, RED, None, BLUE]`.
+- **Per-segment timing**: `run_times={1: 2.0}` or `run_times=[0.5, 2.0, 0.5]`.
+- **Lower-level control**: use `partition_segments(tex, list(parts))` to get `{index: VGroup}` and compose your own animation.
+
+## Multi-line layout
+
+1. Each line is a separate `Tex(...)` + `SmartHebWrite(...)`.
+2. After placing **line 1**, subsequent lines:
+   - `next_to(prev_line, DOWN, buff=0.35, aligned_edge=RIGHT)`
+   - or `VGroup(*lines).arrange(DOWN, aligned_edge=RIGHT)`.
+3. Right edge of all lines aligns (RTL paragraph block).
+
+## Line builder tool
+
+- Open **`line_builder.html`** in a browser to interactively build lines with colors, styles (B/I/U), and timing — generates ready-to-use Python code.
+
+## Code style
+
+- Prefer **small, focused** changes; match existing style in `hebrew_utils.py` and scene files.
+- On **PowerShell**, avoid embedding `$` in one-liner commands; use a `.py` file.

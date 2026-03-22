@@ -1,3 +1,0 @@
-# Optional venv for the MCP server only:
-#   python -m venv .venv && .venv\Scripts\pip install -r requirements-mcp.txt
-mcp>=1.0.0

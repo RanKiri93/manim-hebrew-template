@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hebrew Tex Line Builder</title>
+<style>
+:root {
+  --bg: #f4f5f7; --surface: #fff; --border: #d1d5db;
+  --text: #1a1a2e; --text-muted: #6b7280; --accent: #4361ee;
+  --accent-light: #e0e7ff; --math-bg: #eff6ff; --text-bg: #f9fafb;
+  --danger: #ef4444; --radius: 8px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.6;
+  padding: 24px; max-width: 960px; margin: 0 auto;
+}
+h1 { font-size: 1.5rem; font-weight: 700; }
+h2 { font-size: .95rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-bottom: 8px; }
+section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+label { font-size: .85rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px; }
+input, select, textarea {
+  font-family: inherit; font-size: .95rem; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 6px; outline: none;
+  transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+button {
+  font-family: inherit; font-size: .85rem; font-weight: 600;
+  padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+button:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #3651d4; }
+.btn-secondary { background: #e5e7eb; color: var(--text); }
+.btn-secondary:hover { background: #d1d5db; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: .8rem; }
+
+/* ── Header ───────────────────────────────────────────────── */
+header { margin-bottom: 20px; }
+header p { color: var(--text-muted); font-size: .9rem; }
+
+/* ── Input row ────────────────────────────────────────────── */
+.input-row { display: flex; gap: 8px; }
+.input-row input { flex: 1; }
+#line-input { font-size: 1.05rem; font-family: "David Libre", "Noto Sans Hebrew", "Segoe UI", sans-serif; }
+
+/* ── Settings ─────────────────────────────────────────────── */
+.settings-row { display: flex; gap: 20px; flex-wrap: wrap; }
+.settings-row .field { display: flex; flex-direction: column; min-width: 120px; }
+.settings-row input { width: 100%; }
+
+/* ── Segments ─────────────────────────────────────────────── */
+#segments-container {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  direction: rtl; min-height: 48px; align-items: flex-start;
+  padding: 8px 0;
+}
+.seg-chip {
+  display: inline-flex; flex-direction: column; align-items: center;
+  padding: 6px 12px 4px; border-radius: 6px; cursor: pointer;
+  border: 2px solid transparent; position: relative;
+  transition: border-color .15s, box-shadow .15s;
+  max-width: 260px; word-break: break-word;
+}
+.seg-chip:hover { box-shadow: 0 0 0 2px var(--accent-light); }
+.seg-chip.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+.seg-chip.type-text { background: var(--text-bg); }
+.seg-chip.type-math { background: var(--math-bg); }
+.seg-chip .seg-label {
+  font-size: .65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-muted); margin-top: 2px;
+}
+.seg-chip .seg-index {
+  position: absolute; top: -8px; left: -8px;
+  background: var(--accent); color: #fff; font-size: .65rem; font-weight: 700;
+  width: 18px; height: 18px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+}
+.seg-chip .seg-text {
+  font-family: "David Libre", "Noto Sans Hebrew", serif;
+  font-size: 1.05rem; direction: rtl; unicode-bidi: bidi-override;
+  white-space: pre-wrap;
+}
+.seg-chip .seg-text.math-display { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", serif; font-style: italic; }
+.seg-chip .style-indicators { font-size: .65rem; color: var(--accent); margin-top: 2px; }
+.seg-empty { color: var(--text-muted); font-style: italic; padding: 12px; }
+
+/* ── Toolbox ──────────────────────────────────────────────── */
+#toolbox { border-left: 3px solid var(--accent); }
+.tool-grid { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.tool-group { display: flex; flex-direction: column; gap: 4px; }
+.tool-group label { font-size: .75rem; }
+.style-btns { display: flex; gap: 4px; }
+.style-btn {
+  width: 34px; height: 34px; font-size: .9rem; font-weight: 700;
+  border: 2px solid var(--border); border-radius: 6px; background: #fff;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.style-btn:hover { border-color: var(--accent); }
+.style-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.style-btn.disabled { opacity: .35; cursor: not-allowed; }
+.color-swatches { display: flex; flex-wrap: wrap; gap: 4px; }
+.color-swatch {
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; transition: transform .1s, border-color .15s;
+}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.active { border-color: var(--text); box-shadow: 0 0 0 2px var(--accent-light); }
+.color-swatch.none-swatch {
+  background: linear-gradient(135deg, #fff 45%, #ef4444 50%, #fff 55%);
+  border: 2px solid var(--border);
+}
+#run-time-input { width: 80px; }
+
+/* ── Split UI ─────────────────────────────────────────────── */
+#split-ui { margin-top: 12px; padding: 12px; background: #fefce8; border-radius: 6px; border: 1px solid #fde68a; }
+#split-chars {
+  display: flex; direction: rtl; flex-wrap: wrap; gap: 0;
+  font-family: "David Libre", "Noto Sans Hebrew", serif;
+  font-size: 1.3rem; padding: 8px 0; align-items: center;
+}
+.split-divider {
+  width: 3px; height: 28px; margin: 0 1px; cursor: pointer;
+  border-radius: 2px; transition: background .1s;
+}
+.split-divider:hover { background: var(--danger); }
+.split-char { user-select: none; }
+
+/* ── Preview ──────────────────────────────────────────────── */
+#preview {
+  font-family: "David Libre", "Noto Sans Hebrew", serif;
+  font-size: 1.2rem; direction: rtl; padding: 16px; min-height: 48px;
+  background: #0d1117; color: #e6edf3; border-radius: 6px;
+  line-height: 1.8;
+}
+#preview .prev-math { font-family: "Cambria Math", "STIX Two Math", serif; font-style: italic; }
+.caution { background: #fef3c7; border: 1px solid #fde68a; padding: 8px 12px; border-radius: 6px; font-size: .85rem; color: #92400e; margin-top: 8px; }
+
+/* ── Code output ──────────────────────────────────────────── */
+.code-wrap { position: relative; }
+#code-output {
+  display: block; background: #1e1e2e; color: #cdd6f4; padding: 16px;
+  border-radius: 6px; font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: .85rem; line-height: 1.7; white-space: pre; overflow-x: auto;
+  direction: ltr; text-align: left;
+}
+.copy-btn { position: absolute; top: 8px; right: 8px; }
+.code-section .note { font-size: .8rem; color: var(--text-muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Hebrew Tex Line Builder</h1>
+  <p>Build <code>SmartHebWrite</code> lines with per-segment colors, styles, and timing.</p>
+</header>
+
+<section>
+  <h2>Input</h2>
+  <label for="line-input">Write your mixed Hebrew + Math line (use <code>$...$</code> for inline math)</label>
+  <div class="input-row">
+    <input id="line-input" dir="rtl" placeholder="תהא $f(x)$ פונקציה רציפה בקטע $[a,b]$." value="תהא $f(x)$ פונקציה רציפה בקטע הסגור $[a,b]$ וגזירה בקטע הפתוח $(a,b)$.">
+    <button class="btn-primary" onclick="parseLine()">Parse</button>
+  </div>
+</section>
+
+<section>
+  <h2>Settings</h2>
+  <div class="settings-row">
+    <div class="field">
+      <label for="obj-name">Object Name</label>
+      <input id="obj-name" value="line1" oninput="generateCode()">
+    </div>
+    <div class="field">
+      <label for="font-size">Font Size</label>
+      <input id="font-size" type="number" value="48" min="8" max="200" oninput="generateCode()">
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Segments <span style="font-weight:400;font-size:.8rem;color:var(--text-muted)">(click to select &middot; right = first in reading order)</span></h2>
+  <div id="segments-container">
+    <span class="seg-empty">Press "Parse" to generate segments.</span>
+  </div>
+  <div id="merge-bar" style="margin-top:8px;display:none">
+    <button class="btn-sm btn-secondary" onclick="mergeWithPrev()">Merge with previous segment</button>
+  </div>
+</section>
+
+<section id="toolbox" style="display:none">
+  <h2>Segment <span id="tool-idx"></span> Properties</h2>
+  <div class="tool-grid">
+    <div class="tool-group">
+      <label>Color</label>
+      <div class="color-swatches" id="color-swatches"></div>
+    </div>
+    <div class="tool-group">
+      <label>Style</label>
+      <div class="style-btns">
+        <button class="style-btn" id="btn-bold" onclick="toggleStyle('bold')" title="Bold"><b>B</b></button>
+        <button class="style-btn" id="btn-italic" onclick="toggleStyle('italic')" title="Italic"><i>I</i></button>
+        <button class="style-btn" id="btn-underline" onclick="toggleStyle('underline')" title="Underline"><u>U</u></button>
+      </div>
+    </div>
+    <div class="tool-group">
+      <label for="run-time-input">Run Time (s)</label>
+      <input id="run-time-input" type="number" step="0.1" min="0.1" placeholder="auto" oninput="setRunTime(this.value)">
+    </div>
+    <div class="tool-group" id="split-group">
+      <label>Split</label>
+      <button class="btn-sm btn-secondary" id="split-btn" onclick="enterSplitMode()">Split this segment</button>
+    </div>
+  </div>
+  <div id="split-ui" style="display:none">
+    <label>Click between characters to split:</label>
+    <div id="split-chars"></div>
+    <button class="btn-sm btn-secondary" onclick="exitSplitMode()">Cancel</button>
+  </div>
+  <div class="caution" id="math-caution" style="display:none">
+    Math segments are atomic &mdash; splitting or applying italic is not available.<br>
+    <b>Bold</b> uses <code>\mathbf{}</code> inside <code>$...$</code>. <b>Underline</b> uses <code>\underline{}</code> wrapping the whole <code>$...$</code>.
+  </div>
+</section>
+
+<section>
+  <h2>Preview</h2>
+  <div id="preview"></div>
+</section>
+
+<section>
+  <h2>Generated Code</h2>
+  <div class="code-wrap">
+    <pre><code id="code-output"></code></pre>
+    <button class="btn-sm btn-primary copy-btn" onclick="copyCode()">Copy</button>
+  </div>
+  <label style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;cursor:pointer;font-weight:500;font-size:.9rem;color:var(--text)">
+    <input type="checkbox" id="full-scene-cb" onchange="generateCode()"> Full scene code for testing
+  </label>
+  <p class="note" id="import-note"></p>
+</section>
+
+<script>
+/* ================================================================
+   State
+   ================================================================ */
+let segments = [];
+let selectedIdx = null;
+let splitMode = false;
+
+const MANIM_COLORS = [
+  { name: "WHITE",  hex: "#ffffff" },
+  { name: "RED",    hex: "#FC6255" },
+  { name: "BLUE",   hex: "#58C4DD" },
+  { name: "GREEN",  hex: "#83C167" },
+  { name: "YELLOW", hex: "#FFFF00" },
+  { name: "ORANGE", hex: "#FF862F" },
+  { name: "PURPLE", hex: "#9A72AC" },
+  { name: "PINK",   hex: "#D147BD" },
+  { name: "TEAL",   hex: "#5CD0B3" },
+  { name: "GOLD",   hex: "#F0AC5F" },
+  { name: "MAROON", hex: "#C55F73" },
+  { name: "GRAY",   hex: "#888888" },
+];
+
+/* ================================================================
+   Parsing
+   ================================================================ */
+function parseLine() {
+  const raw = document.getElementById("line-input").value;
+  if (!raw.trim()) return;
+
+  if (raw.includes("$$")) {
+    alert("Warning: $$ (display math) detected. This tool handles inline $...$ only.\nUse MathTex for display math.");
+  }
+
+  segments = [];
+  const re = /\$[^$]+\$/g;
+  let last = 0, m;
+  while ((m = re.exec(raw)) !== null) {
+    if (m.index > last)
+      segments.push(makeSeg(raw.slice(last, m.index), "text"));
+    segments.push(makeSeg(m[0], "math"));
+    last = re.lastIndex;
+  }
+  if (last < raw.length)
+    segments.push(makeSeg(raw.slice(last), "text"));
+
+  selectedIdx = null;
+  render();
+}
+
+function makeSeg(text, type) {
+  return { text, type, color: null, bold: false, italic: false, underline: false, runTime: null };
+}
+
+/* ================================================================
+   Rendering
+   ================================================================ */
+function render() {
+  renderSegments();
+  renderToolbox();
+  renderPreview();
+  generateCode();
+}
+
+function renderSegments() {
+  const c = document.getElementById("segments-container");
+  if (!segments.length) {
+    c.innerHTML = '<span class="seg-empty">Press "Parse" to generate segments.</span>';
+    return;
+  }
+  c.innerHTML = "";
+  segments.forEach((seg, i) => {
+    const chip = document.createElement("div");
+    chip.className = `seg-chip type-${seg.type}` + (i === selectedIdx ? " selected" : "");
+    chip.onclick = () => selectSegment(i);
+
+    const idx = document.createElement("span");
+    idx.className = "seg-index";
+    idx.textContent = i;
+    chip.appendChild(idx);
+
+    const txt = document.createElement("span");
+    txt.className = "seg-text" + (seg.type === "math" ? " math-display" : "");
+    txt.textContent = seg.type === "math" ? seg.text.slice(1, -1) : seg.text;
+    if (seg.color) txt.style.color = MANIM_COLORS.find(c => c.name === seg.color)?.hex || "#fff";
+    if (seg.bold) txt.style.fontWeight = "bold";
+    if (seg.italic) txt.style.fontStyle = "italic";
+    if (seg.underline) txt.style.textDecoration = "underline";
+    chip.appendChild(txt);
+
+    const label = document.createElement("span");
+    label.className = "seg-label";
+    label.textContent = seg.type;
+    chip.appendChild(label);
+
+    const indicators = [];
+    if (seg.bold) indicators.push("B");
+    if (seg.italic) indicators.push("I");
+    if (seg.underline) indicators.push("U");
+    if (seg.color) indicators.push(seg.color);
+    if (seg.runTime) indicators.push(seg.runTime + "s");
+    if (indicators.length) {
+      const si = document.createElement("span");
+      si.className = "style-indicators";
+      si.textContent = indicators.join(" · ");
+      chip.appendChild(si);
+    }
+    c.appendChild(chip);
+  });
+
+  const mergeBar = document.getElementById("merge-bar");
+  mergeBar.style.display =
+    selectedIdx !== null && selectedIdx > 0
+    && segments[selectedIdx].type === "text"
+    && segments[selectedIdx - 1].type === "text"
+      ? "" : "none";
+}
+
+/* ── Toolbox ──────────────────────────────────────────────── */
+function renderToolbox() {
+  const box = document.getElementById("toolbox");
+  if (selectedIdx === null) { box.style.display = "none"; return; }
+  box.style.display = "";
+  exitSplitMode();
+
+  const seg = segments[selectedIdx];
+  document.getElementById("tool-idx").textContent = `#${selectedIdx}`;
+
+  // Color swatches
+  const sc = document.getElementById("color-swatches");
+  sc.innerHTML = "";
+  // "none" swatch
+  const noSw = document.createElement("div");
+  noSw.className = "color-swatch none-swatch" + (!seg.color ? " active" : "");
+  noSw.title = "No color (default white)";
+  noSw.onclick = () => { seg.color = null; render(); };
+  sc.appendChild(noSw);
+  MANIM_COLORS.forEach(mc => {
+    const sw = document.createElement("div");
+    sw.className = "color-swatch" + (seg.color === mc.name ? " active" : "");
+    sw.style.background = mc.hex;
+    if (mc.name === "WHITE") sw.style.border = "2px solid #ccc";
+    sw.title = mc.name;
+    sw.onclick = () => { seg.color = mc.name; render(); };
+    sc.appendChild(sw);
+  });
+
+  // Style buttons
+  document.getElementById("btn-bold").className = "style-btn" + (seg.bold ? " active" : "");
+  const italicBtn = document.getElementById("btn-italic");
+  italicBtn.className = "style-btn" + (seg.italic ? " active" : "") + (seg.type === "math" ? " disabled" : "");
+  document.getElementById("btn-underline").className = "style-btn" + (seg.underline ? " active" : "");
+
+  // Run time
+  document.getElementById("run-time-input").value = seg.runTime || "";
+
+  // Split button
+  const splitGroup = document.getElementById("split-group");
+  splitGroup.style.display = seg.type === "text" ? "" : "none";
+  document.getElementById("math-caution").style.display = seg.type === "math" ? "" : "none";
+}
+
+/* ── Toolbox actions ──────────────────────────────────────── */
+function selectSegment(i) {
+  selectedIdx = i;
+  render();
+}
+
+function toggleStyle(prop) {
+  if (selectedIdx === null) return;
+  const seg = segments[selectedIdx];
+  if (prop === "italic" && seg.type === "math") return;
+  seg[prop] = !seg[prop];
+  render();
+}
+
+function setRunTime(val) {
+  if (selectedIdx === null) return;
+  const v = parseFloat(val);
+  segments[selectedIdx].runTime = (isNaN(v) || v <= 0) ? null : v;
+  renderPreview();
+  generateCode();
+}
+
+/* ── Split mode ───────────────────────────────────────────── */
+function enterSplitMode() {
+  if (selectedIdx === null || segments[selectedIdx].type === "math") return;
+  splitMode = true;
+  const ui = document.getElementById("split-ui");
+  ui.style.display = "";
+  const chars = document.getElementById("split-chars");
+  chars.innerHTML = "";
+  const text = segments[selectedIdx].text;
+  for (let i = 0; i <= text.length; i++) {
+    if (i < text.length) {
+      const sp = document.createElement("span");
+      sp.className = "split-char";
+      sp.textContent = text[i];
+      chars.appendChild(sp);
+    }
+    if (i > 0 && i < text.length) {
+      const d = document.createElement("span");
+      d.className = "split-divider";
+      d.title = `Split at position ${i}`;
+      d.onclick = () => doSplit(i);
+      chars.appendChild(d);
+    }
+  }
+}
+
+function exitSplitMode() {
+  splitMode = false;
+  document.getElementById("split-ui").style.display = "none";
+}
+
+function doSplit(pos) {
+  const seg = segments[selectedIdx];
+  const before = { ...seg, text: seg.text.slice(0, pos) };
+  const after  = { ...seg, text: seg.text.slice(pos) };
+  const ins = [];
+  if (before.text) ins.push(before);
+  if (after.text) ins.push(after);
+  segments.splice(selectedIdx, 1, ...ins);
+  exitSplitMode();
+  render();
+}
+
+function mergeWithPrev() {
+  if (selectedIdx === null || selectedIdx === 0) return;
+  const prev = segments[selectedIdx - 1];
+  const cur  = segments[selectedIdx];
+  if (prev.type !== "text" || cur.type !== "text") return;
+  prev.text += cur.text;
+  segments.splice(selectedIdx, 1);
+  selectedIdx = selectedIdx - 1;
+  render();
+}
+
+/* ================================================================
+   Preview
+   ================================================================ */
+function renderPreview() {
+  const el = document.getElementById("preview");
+  if (!segments.length) { el.innerHTML = ""; return; }
+  el.innerHTML = "";
+  segments.forEach(seg => {
+    const span = document.createElement("span");
+    span.className = seg.type === "math" ? "prev-math" : "";
+    span.textContent = seg.type === "math" ? seg.text.slice(1, -1) : seg.text;
+    if (seg.color) span.style.color = MANIM_COLORS.find(c => c.name === seg.color)?.hex || "#e6edf3";
+    if (seg.bold) span.style.fontWeight = "bold";
+    if (seg.italic) span.style.fontStyle = "italic";
+    if (seg.underline) span.style.textDecoration = "underline";
+    el.appendChild(span);
+  });
+}
+
+/* ================================================================
+   Code Generation
+   ================================================================ */
+function generateCode() {
+  const codeEl = document.getElementById("code-output");
+  const noteEl = document.getElementById("import-note");
+  if (!segments.length) { codeEl.textContent = ""; noteEl.textContent = ""; return; }
+
+  const objName  = document.getElementById("obj-name").value || "line1";
+  const fontSize = parseInt(document.getElementById("font-size").value) || 48;
+
+  // Build per-segment LaTeX strings
+  const parts = segments.map(seg => formatPart(seg));
+
+  // Collect colors & run_times
+  const colorEntries = [];
+  const timeEntries = [];
+  const usedColors = new Set();
+  segments.forEach((seg, i) => {
+    if (seg.color) { colorEntries.push([i, seg.color]); usedColors.add(seg.color); }
+    if (seg.runTime) { timeEntries.push([i, seg.runTime]); }
+  });
+
+  // Determine needed color imports
+  const colorNames = [...usedColors].sort();
+
+  const fullScene = document.getElementById("full-scene-cb").checked;
+
+  // Helpers for part formatting
+  function fmtPart(p, indent) {
+    const needs_r = p.includes("\\");
+    const q = p.includes('"') ? "'" : '"';
+    return `${indent}${needs_r ? "r" : ""}${q}${p}${q},`;
+  }
+
+  // Build code
+  let code = "";
+
+  if (fullScene) {
+    // ── Full runnable scene ──────────────────────────────────
+    let manimImports = "Scene, Tex, config";
+    if (colorNames.length) manimImports += ", " + colorNames.join(", ");
+    code += `from manim import ${manimImports}\n`;
+    code += "from hebrew_utils import SmartHebWrite, get_hebrew_template\n\n";
+    code += "config.tex_template = get_hebrew_template()\n\n\n";
+    code += `class TestScene(Scene):\n`;
+    code += `    def construct(self):\n`;
+    code += `        ${objName}_parts = (\n`;
+    parts.forEach(p => { code += fmtPart(p, "            ") + "\n"; });
+    code += `        )\n`;
+    code += `        ${objName} = Tex(*${objName}_parts`;
+    if (fontSize !== 48) code += `, font_size=${fontSize}`;
+    code += ")\n";
+    code += `        self.play(SmartHebWrite(\n`;
+    code += `            ${objName},\n`;
+    code += `            tex_strings_source=${objName}_parts,\n`;
+    if (colorEntries.length) {
+      code += `            colors={${colorEntries.map(([i, c]) => `${i}: ${c}`).join(", ")}},\n`;
+    }
+    if (timeEntries.length) {
+      code += `            run_times={${timeEntries.map(([i, t]) => `${i}: ${t}`).join(", ")}},\n`;
+    }
+    code += "        ))\n";
+    code += "        self.wait(1)\n";
+    code += "\n\n";
+    code += "# Run with:\n";
+    code += "#   manim render -pql <filename>.py TestScene\n";
+  } else {
+    // ── Snippet mode (original) ──────────────────────────────
+    code += "# ── Required imports ─────────────────────────────────────\n";
+    let manimImports = "Scene, Tex, config";
+    if (colorNames.length) manimImports += ", " + colorNames.join(", ");
+    code += `from manim import ${manimImports}\n`;
+    code += "from hebrew_utils import SmartHebWrite, get_hebrew_template\n\n";
+    code += "# ── Place once at module level ───────────────────────────\n";
+    code += "config.tex_template = get_hebrew_template()\n\n";
+    code += "# ── Inside your Scene.construct() method ─────────────────\n";
+    code += `${objName}_parts = (\n`;
+    parts.forEach(p => { code += fmtPart(p, "    ") + "\n"; });
+    code += ")\n";
+    code += `${objName} = Tex(*${objName}_parts`;
+    if (fontSize !== 48) code += `, font_size=${fontSize}`;
+    code += ")\n";
+    code += `self.play(SmartHebWrite(\n`;
+    code += `    ${objName},\n`;
+    code += `    tex_strings_source=${objName}_parts,\n`;
+    if (colorEntries.length) {
+      code += `    colors={${colorEntries.map(([i, c]) => `${i}: ${c}`).join(", ")}},\n`;
+    }
+    if (timeEntries.length) {
+      code += `    run_times={${timeEntries.map(([i, t]) => `${i}: ${t}`).join(", ")}},\n`;
+    }
+    code += "))\n";
+  }
+
+  codeEl.textContent = code;
+
+  // Import note
+  const notes = [];
+  notes.push("Ensure hebrew_utils.py is on your Python path (e.g. run from the project root).");
+  if (segments.some(s => s.bold || s.underline))
+    notes.push("Bold/underline use LaTeX commands that require the fonts to support those variants.");
+  noteEl.innerHTML = notes.map(n => "&#8226; " + n).join("<br>");
+}
+
+function formatPart(seg) {
+  if (seg.type === "math") {
+    let inner = seg.text.slice(1, -1); // strip $...$
+    if (seg.bold) inner = `\\mathbf{${inner}}`;
+    if (seg.underline) return `\\underline{$${inner}$}`;
+    return `$${inner}$`;
+  }
+  // text
+  let t = seg.text;
+  if (seg.bold) t = `\\textbf{${t}}`;
+  if (seg.italic) t = `\\textit{${t}}`;
+  if (seg.underline) t = `\\underline{${t}}`;
+  return t;
+}
+
+/* ================================================================
+   Copy
+   ================================================================ */
+function copyCode() {
+  const code = document.getElementById("code-output").textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.querySelector(".copy-btn");
+    btn.textContent = "Copied!";
+    setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+  });
+}
+
+/* ── Init: build color swatches once ──────────────────────── */
+parseLine();
+</script>
+</body>
+</html>
