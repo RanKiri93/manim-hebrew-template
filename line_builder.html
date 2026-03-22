@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hebrew Tex Line Builder</title>
+<title>Manim Helper Tools</title>
 <style>
 :root {
   --bg: #f4f5f7; --surface: #fff; --border: #d1d5db;
@@ -15,7 +15,7 @@
 body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   background: var(--bg); color: var(--text); line-height: 1.6;
-  padding: 24px; max-width: 960px; margin: 0 auto;
+  padding: 24px; max-width: 980px; margin: 0 auto;
 }
 h1 { font-size: 1.5rem; font-weight: 700; }
 h2 { font-size: .95rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-bottom: 8px; }
@@ -38,10 +38,22 @@ button:active { transform: scale(.97); }
 .btn-secondary { background: #e5e7eb; color: var(--text); }
 .btn-secondary:hover { background: #d1d5db; }
 .btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #dc2626; }
 .btn-sm { padding: 4px 10px; font-size: .8rem; }
 
+/* ── Tab bar ──────────────────────────────────────────────── */
+.tab-bar { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+.tab-btn {
+  padding: 10px 24px; font-size: .95rem; font-weight: 600;
+  background: none; border: none; border-bottom: 3px solid transparent;
+  color: var(--text-muted); cursor: pointer; margin-bottom: -2px;
+  transition: color .15s, border-color .15s;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
 /* ── Header ───────────────────────────────────────────────── */
-header { margin-bottom: 20px; }
+header { margin-bottom: 0; }
 header p { color: var(--text-muted); font-size: .9rem; }
 
 /* ── Input row ────────────────────────────────────────────── */
@@ -142,24 +154,90 @@ header p { color: var(--text-muted); font-size: .9rem; }
 #preview .prev-math { font-family: "Cambria Math", "STIX Two Math", serif; font-style: italic; }
 .caution { background: #fef3c7; border: 1px solid #fde68a; padding: 8px 12px; border-radius: 6px; font-size: .85rem; color: #92400e; margin-top: 8px; }
 
-/* ── Code output ──────────────────────────────────────────── */
+/* ── Code output (shared) ─────────────────────────────────── */
 .code-wrap { position: relative; }
-#code-output {
+.code-block {
   display: block; background: #1e1e2e; color: #cdd6f4; padding: 16px;
   border-radius: 6px; font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
   font-size: .85rem; line-height: 1.7; white-space: pre; overflow-x: auto;
   direction: ltr; text-align: left;
 }
 .copy-btn { position: absolute; top: 8px; right: 8px; }
-.code-section .note { font-size: .8rem; color: var(--text-muted); margin-top: 8px; }
+.note { font-size: .8rem; color: var(--text-muted); margin-top: 8px; }
+
+/* ── Graphs tab ───────────────────────────────────────────── */
+.g-top-row { display: flex; gap: 12px; align-items: flex-start; }
+.g-canvas-wrap { flex: 1; min-width: 0; }
+.g-canvas-wrap canvas { display: block; border-radius: 6px; cursor: crosshair; width: 100%; }
+.g-sidebar { width: 220px; flex-shrink: 0; }
+.g-axes-item {
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+  border-radius: 6px; cursor: pointer; margin-bottom: 4px;
+  border: 2px solid transparent; transition: all .15s;
+}
+.g-axes-item:hover { background: var(--text-bg); }
+.g-axes-item.selected { border-color: var(--accent); background: var(--accent-light); }
+.g-axes-item input {
+  flex: 1; padding: 2px 6px; font-size: .85rem; border: 1px solid transparent;
+  background: transparent; font-weight: 600;
+}
+.g-axes-item input:focus { border-color: var(--border); background: #fff; }
+.g-axes-item .g-del { opacity: .4; cursor: pointer; font-size: .8rem; padding: 2px 4px; }
+.g-axes-item .g-del:hover { opacity: 1; color: var(--danger); }
+
+.g-props { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px 16px; }
+.g-props .field { display: flex; flex-direction: column; gap: 2px; }
+.g-props input, .g-props select { padding: 6px 8px; font-size: .85rem; }
+.g-props .range-row { display: flex; gap: 4px; align-items: center; }
+.g-props .range-row input { width: 55px; text-align: center; }
+.g-props .range-row span { font-size: .8rem; color: var(--text-muted); }
+.g-props .cb-row { display: flex; align-items: center; gap: 6px; }
+.g-props .cb-row input[type=checkbox] { width: auto; padding: 0; }
+.g-props .cb-row label { display: inline; margin: 0; font-size: .85rem; }
+
+.g-item-row {
+  display: flex; gap: 8px; align-items: center; padding: 6px 0;
+  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.g-item-row:last-child { border-bottom: none; }
+.g-item-row input { padding: 5px 8px; font-size: .85rem; }
+.g-item-row select { padding: 5px 8px; font-size: .85rem; }
+.g-item-row .expr-input { flex: 1; min-width: 120px; font-family: "Cascadia Code", "Fira Code", monospace; }
+.g-item-row .coord-input { width: 55px; text-align: center; }
+.g-item-row .g-del { opacity: .4; cursor: pointer; font-size: .75rem; }
+.g-item-row .g-del:hover { opacity: 1; color: var(--danger); }
+.g-no-sel { color: var(--text-muted); font-style: italic; padding: 12px 0; font-size: .9rem; }
+
+.help-tip {
+  display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--border); color: #fff; font-size: .7rem; font-weight: 700;
+  text-align: center; line-height: 18px; cursor: help; position: relative;
+  vertical-align: middle; margin-left: 4px;
+}
+.help-tip:hover::after {
+  content: attr(data-tip); position: absolute; left: 24px; top: -4px;
+  background: #1e1e2e; color: #cdd6f4; padding: 8px 12px; border-radius: 6px;
+  font-size: .78rem; font-weight: 400; white-space: pre; z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2); line-height: 1.6;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Hebrew Tex Line Builder</h1>
-  <p>Build <code>SmartHebWrite</code> lines with per-segment colors, styles, and timing.</p>
+  <h1>Manim Helper Tools</h1>
 </header>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('lines')">Hebrew Lines</button>
+  <button class="tab-btn" onclick="switchTab('graphs')">Graphs &amp; Axes</button>
+</nav>
+
+<!-- ================================================================
+     TAB 1: HEBREW LINES (existing, unchanged)
+     ================================================================ -->
+<div id="tab-lines">
 
 <section>
   <h2>Input</h2>
@@ -237,7 +315,7 @@ header p { color: var(--text-muted); font-size: .9rem; }
 <section>
   <h2>Generated Code</h2>
   <div class="code-wrap">
-    <pre><code id="code-output"></code></pre>
+    <pre><code id="code-output" class="code-block"></code></pre>
     <button class="btn-sm btn-primary copy-btn" onclick="copyCode()">Copy</button>
   </div>
   <label style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;cursor:pointer;font-weight:500;font-size:.9rem;color:var(--text)">
@@ -246,14 +324,63 @@ header p { color: var(--text-muted); font-size: .9rem; }
   <p class="note" id="import-note"></p>
 </section>
 
+</div><!-- /tab-lines -->
+
+<!-- ================================================================
+     TAB 2: GRAPHS & AXES
+     ================================================================ -->
+<div id="tab-graphs" style="display:none">
+
+<section>
+  <h2>Canvas</h2>
+  <div class="g-top-row">
+    <div class="g-canvas-wrap">
+      <canvas id="g-canvas" width="700" height="394"></canvas>
+    </div>
+    <div class="g-sidebar">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h2 style="margin:0">Axes</h2>
+        <button class="btn-sm btn-primary" onclick="gAddAxes()">+ Add</button>
+      </div>
+      <div id="g-axes-list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="g-props-section">
+  <h2>Axes Properties</h2>
+  <div id="g-props-body"><span class="g-no-sel">Add and select an axes to edit its properties.</span></div>
+</section>
+
+<section id="g-items-section">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <h2 style="margin:0">Functions &amp; Points</h2>
+    <div style="display:flex;gap:6px">
+      <button class="btn-sm btn-primary" onclick="gAddFunc()">+ Function</button>
+      <button class="btn-sm btn-secondary" onclick="gAddPoint()">+ Point</button>
+    </div>
+  </div>
+  <div id="g-items-body"><span class="g-no-sel">Select an axes, then add functions or points.</span></div>
+</section>
+
+<section>
+  <h2>Generated Code</h2>
+  <div class="code-wrap">
+    <pre><code id="g-code-output" class="code-block"></code></pre>
+    <button class="btn-sm btn-primary copy-btn" onclick="gCopyCode()">Copy</button>
+  </div>
+  <p class="note">Run with: <code>manim render -pql &lt;filename&gt;.py GraphScene</code></p>
+</section>
+
+</div><!-- /tab-graphs -->
+
+<!-- ================================================================
+     JAVASCRIPT
+     ================================================================ -->
 <script>
 /* ================================================================
-   State
+   SHARED — Manim color table
    ================================================================ */
-let segments = [];
-let selectedIdx = null;
-let splitMode = false;
-
 const MANIM_COLORS = [
   { name: "WHITE",  hex: "#ffffff" },
   { name: "RED",    hex: "#FC6255" },
@@ -268,375 +395,659 @@ const MANIM_COLORS = [
   { name: "MAROON", hex: "#C55F73" },
   { name: "GRAY",   hex: "#888888" },
 ];
+function manimHex(name) { return MANIM_COLORS.find(c => c.name === name)?.hex || "#58C4DD"; }
 
 /* ================================================================
-   Parsing
+   TAB SWITCHING
    ================================================================ */
+function switchTab(tab) {
+  document.getElementById("tab-lines").style.display = tab === "lines" ? "" : "none";
+  document.getElementById("tab-graphs").style.display = tab === "graphs" ? "" : "none";
+  document.querySelectorAll(".tab-btn").forEach((btn, i) => {
+    btn.classList.toggle("active", (i === 0 && tab === "lines") || (i === 1 && tab === "graphs"));
+  });
+  if (tab === "graphs") gDrawCanvas();
+}
+
+/* ================================================================ *
+ *  TAB 1: HEBREW LINES (existing code, unchanged)                  *
+ * ================================================================ */
+let segments = [];
+let selectedIdx = null;
+let splitMode = false;
+
 function parseLine() {
   const raw = document.getElementById("line-input").value;
   if (!raw.trim()) return;
-
-  if (raw.includes("$$")) {
-    alert("Warning: $$ (display math) detected. This tool handles inline $...$ only.\nUse MathTex for display math.");
-  }
-
+  if (raw.includes("$$")) alert("Warning: $$ (display math) detected. This tool handles inline $...$ only.\nUse MathTex for display math.");
   segments = [];
   const re = /\$[^$]+\$/g;
   let last = 0, m;
   while ((m = re.exec(raw)) !== null) {
-    if (m.index > last)
-      segments.push(makeSeg(raw.slice(last, m.index), "text"));
+    if (m.index > last) segments.push(makeSeg(raw.slice(last, m.index), "text"));
     segments.push(makeSeg(m[0], "math"));
     last = re.lastIndex;
   }
-  if (last < raw.length)
-    segments.push(makeSeg(raw.slice(last), "text"));
-
+  if (last < raw.length) segments.push(makeSeg(raw.slice(last), "text"));
   selectedIdx = null;
   render();
 }
+function makeSeg(text, type) { return { text, type, color: null, bold: false, italic: false, underline: false, runTime: null }; }
 
-function makeSeg(text, type) {
-  return { text, type, color: null, bold: false, italic: false, underline: false, runTime: null };
-}
-
-/* ================================================================
-   Rendering
-   ================================================================ */
-function render() {
-  renderSegments();
-  renderToolbox();
-  renderPreview();
-  generateCode();
-}
+function render() { renderSegments(); renderToolbox(); renderPreview(); generateCode(); }
 
 function renderSegments() {
   const c = document.getElementById("segments-container");
-  if (!segments.length) {
-    c.innerHTML = '<span class="seg-empty">Press "Parse" to generate segments.</span>';
-    return;
-  }
+  if (!segments.length) { c.innerHTML = '<span class="seg-empty">Press "Parse" to generate segments.</span>'; return; }
   c.innerHTML = "";
   segments.forEach((seg, i) => {
     const chip = document.createElement("div");
     chip.className = `seg-chip type-${seg.type}` + (i === selectedIdx ? " selected" : "");
     chip.onclick = () => selectSegment(i);
-
-    const idx = document.createElement("span");
-    idx.className = "seg-index";
-    idx.textContent = i;
-    chip.appendChild(idx);
-
+    const idx = document.createElement("span"); idx.className = "seg-index"; idx.textContent = i; chip.appendChild(idx);
     const txt = document.createElement("span");
     txt.className = "seg-text" + (seg.type === "math" ? " math-display" : "");
     txt.textContent = seg.type === "math" ? seg.text.slice(1, -1) : seg.text;
-    if (seg.color) txt.style.color = MANIM_COLORS.find(c => c.name === seg.color)?.hex || "#fff";
+    if (seg.color) txt.style.color = manimHex(seg.color);
     if (seg.bold) txt.style.fontWeight = "bold";
     if (seg.italic) txt.style.fontStyle = "italic";
     if (seg.underline) txt.style.textDecoration = "underline";
     chip.appendChild(txt);
-
-    const label = document.createElement("span");
-    label.className = "seg-label";
-    label.textContent = seg.type;
-    chip.appendChild(label);
-
+    const label = document.createElement("span"); label.className = "seg-label"; label.textContent = seg.type; chip.appendChild(label);
     const indicators = [];
-    if (seg.bold) indicators.push("B");
-    if (seg.italic) indicators.push("I");
-    if (seg.underline) indicators.push("U");
-    if (seg.color) indicators.push(seg.color);
-    if (seg.runTime) indicators.push(seg.runTime + "s");
-    if (indicators.length) {
-      const si = document.createElement("span");
-      si.className = "style-indicators";
-      si.textContent = indicators.join(" · ");
-      chip.appendChild(si);
-    }
+    if (seg.bold) indicators.push("B"); if (seg.italic) indicators.push("I"); if (seg.underline) indicators.push("U");
+    if (seg.color) indicators.push(seg.color); if (seg.runTime) indicators.push(seg.runTime + "s");
+    if (indicators.length) { const si = document.createElement("span"); si.className = "style-indicators"; si.textContent = indicators.join(" · "); chip.appendChild(si); }
     c.appendChild(chip);
   });
-
   const mergeBar = document.getElementById("merge-bar");
-  mergeBar.style.display =
-    selectedIdx !== null && selectedIdx > 0
-    && segments[selectedIdx].type === "text"
-    && segments[selectedIdx - 1].type === "text"
-      ? "" : "none";
+  mergeBar.style.display = selectedIdx !== null && selectedIdx > 0 && segments[selectedIdx].type === "text" && segments[selectedIdx - 1].type === "text" ? "" : "none";
 }
 
-/* ── Toolbox ──────────────────────────────────────────────── */
 function renderToolbox() {
   const box = document.getElementById("toolbox");
   if (selectedIdx === null) { box.style.display = "none"; return; }
-  box.style.display = "";
-  exitSplitMode();
-
+  box.style.display = ""; exitSplitMode();
   const seg = segments[selectedIdx];
   document.getElementById("tool-idx").textContent = `#${selectedIdx}`;
-
-  // Color swatches
-  const sc = document.getElementById("color-swatches");
-  sc.innerHTML = "";
-  // "none" swatch
-  const noSw = document.createElement("div");
-  noSw.className = "color-swatch none-swatch" + (!seg.color ? " active" : "");
-  noSw.title = "No color (default white)";
-  noSw.onclick = () => { seg.color = null; render(); };
-  sc.appendChild(noSw);
-  MANIM_COLORS.forEach(mc => {
-    const sw = document.createElement("div");
-    sw.className = "color-swatch" + (seg.color === mc.name ? " active" : "");
-    sw.style.background = mc.hex;
-    if (mc.name === "WHITE") sw.style.border = "2px solid #ccc";
-    sw.title = mc.name;
-    sw.onclick = () => { seg.color = mc.name; render(); };
-    sc.appendChild(sw);
-  });
-
-  // Style buttons
+  const sc = document.getElementById("color-swatches"); sc.innerHTML = "";
+  const noSw = document.createElement("div"); noSw.className = "color-swatch none-swatch" + (!seg.color ? " active" : ""); noSw.title = "No color (default white)"; noSw.onclick = () => { seg.color = null; render(); }; sc.appendChild(noSw);
+  MANIM_COLORS.forEach(mc => { const sw = document.createElement("div"); sw.className = "color-swatch" + (seg.color === mc.name ? " active" : ""); sw.style.background = mc.hex; if (mc.name === "WHITE") sw.style.border = "2px solid #ccc"; sw.title = mc.name; sw.onclick = () => { seg.color = mc.name; render(); }; sc.appendChild(sw); });
   document.getElementById("btn-bold").className = "style-btn" + (seg.bold ? " active" : "");
-  const italicBtn = document.getElementById("btn-italic");
-  italicBtn.className = "style-btn" + (seg.italic ? " active" : "") + (seg.type === "math" ? " disabled" : "");
+  document.getElementById("btn-italic").className = "style-btn" + (seg.italic ? " active" : "") + (seg.type === "math" ? " disabled" : "");
   document.getElementById("btn-underline").className = "style-btn" + (seg.underline ? " active" : "");
-
-  // Run time
   document.getElementById("run-time-input").value = seg.runTime || "";
-
-  // Split button
-  const splitGroup = document.getElementById("split-group");
-  splitGroup.style.display = seg.type === "text" ? "" : "none";
+  document.getElementById("split-group").style.display = seg.type === "text" ? "" : "none";
   document.getElementById("math-caution").style.display = seg.type === "math" ? "" : "none";
 }
 
-/* ── Toolbox actions ──────────────────────────────────────── */
-function selectSegment(i) {
-  selectedIdx = i;
-  render();
-}
+function selectSegment(i) { selectedIdx = i; render(); }
+function toggleStyle(prop) { if (selectedIdx === null) return; const seg = segments[selectedIdx]; if (prop === "italic" && seg.type === "math") return; seg[prop] = !seg[prop]; render(); }
+function setRunTime(val) { if (selectedIdx === null) return; const v = parseFloat(val); segments[selectedIdx].runTime = (isNaN(v) || v <= 0) ? null : v; renderPreview(); generateCode(); }
 
-function toggleStyle(prop) {
-  if (selectedIdx === null) return;
-  const seg = segments[selectedIdx];
-  if (prop === "italic" && seg.type === "math") return;
-  seg[prop] = !seg[prop];
-  render();
-}
-
-function setRunTime(val) {
-  if (selectedIdx === null) return;
-  const v = parseFloat(val);
-  segments[selectedIdx].runTime = (isNaN(v) || v <= 0) ? null : v;
-  renderPreview();
-  generateCode();
-}
-
-/* ── Split mode ───────────────────────────────────────────── */
 function enterSplitMode() {
   if (selectedIdx === null || segments[selectedIdx].type === "math") return;
-  splitMode = true;
-  const ui = document.getElementById("split-ui");
-  ui.style.display = "";
-  const chars = document.getElementById("split-chars");
-  chars.innerHTML = "";
+  splitMode = true; document.getElementById("split-ui").style.display = "";
+  const chars = document.getElementById("split-chars"); chars.innerHTML = "";
   const text = segments[selectedIdx].text;
   for (let i = 0; i <= text.length; i++) {
-    if (i < text.length) {
-      const sp = document.createElement("span");
-      sp.className = "split-char";
-      sp.textContent = text[i];
-      chars.appendChild(sp);
-    }
-    if (i > 0 && i < text.length) {
-      const d = document.createElement("span");
-      d.className = "split-divider";
-      d.title = `Split at position ${i}`;
-      d.onclick = () => doSplit(i);
-      chars.appendChild(d);
-    }
+    if (i < text.length) { const sp = document.createElement("span"); sp.className = "split-char"; sp.textContent = text[i]; chars.appendChild(sp); }
+    if (i > 0 && i < text.length) { const d = document.createElement("span"); d.className = "split-divider"; d.title = `Split at position ${i}`; d.onclick = () => doSplit(i); chars.appendChild(d); }
   }
 }
+function exitSplitMode() { splitMode = false; document.getElementById("split-ui").style.display = "none"; }
+function doSplit(pos) { const seg = segments[selectedIdx]; const before = { ...seg, text: seg.text.slice(0, pos) }; const after = { ...seg, text: seg.text.slice(pos) }; const ins = []; if (before.text) ins.push(before); if (after.text) ins.push(after); segments.splice(selectedIdx, 1, ...ins); exitSplitMode(); render(); }
+function mergeWithPrev() { if (selectedIdx === null || selectedIdx === 0) return; const prev = segments[selectedIdx - 1]; const cur = segments[selectedIdx]; if (prev.type !== "text" || cur.type !== "text") return; prev.text += cur.text; segments.splice(selectedIdx, 1); selectedIdx--; render(); }
 
-function exitSplitMode() {
-  splitMode = false;
-  document.getElementById("split-ui").style.display = "none";
-}
-
-function doSplit(pos) {
-  const seg = segments[selectedIdx];
-  const before = { ...seg, text: seg.text.slice(0, pos) };
-  const after  = { ...seg, text: seg.text.slice(pos) };
-  const ins = [];
-  if (before.text) ins.push(before);
-  if (after.text) ins.push(after);
-  segments.splice(selectedIdx, 1, ...ins);
-  exitSplitMode();
-  render();
-}
-
-function mergeWithPrev() {
-  if (selectedIdx === null || selectedIdx === 0) return;
-  const prev = segments[selectedIdx - 1];
-  const cur  = segments[selectedIdx];
-  if (prev.type !== "text" || cur.type !== "text") return;
-  prev.text += cur.text;
-  segments.splice(selectedIdx, 1);
-  selectedIdx = selectedIdx - 1;
-  render();
-}
-
-/* ================================================================
-   Preview
-   ================================================================ */
 function renderPreview() {
-  const el = document.getElementById("preview");
-  if (!segments.length) { el.innerHTML = ""; return; }
-  el.innerHTML = "";
-  segments.forEach(seg => {
-    const span = document.createElement("span");
-    span.className = seg.type === "math" ? "prev-math" : "";
-    span.textContent = seg.type === "math" ? seg.text.slice(1, -1) : seg.text;
-    if (seg.color) span.style.color = MANIM_COLORS.find(c => c.name === seg.color)?.hex || "#e6edf3";
-    if (seg.bold) span.style.fontWeight = "bold";
-    if (seg.italic) span.style.fontStyle = "italic";
-    if (seg.underline) span.style.textDecoration = "underline";
-    el.appendChild(span);
-  });
+  const el = document.getElementById("preview"); if (!segments.length) { el.innerHTML = ""; return; } el.innerHTML = "";
+  segments.forEach(seg => { const span = document.createElement("span"); span.className = seg.type === "math" ? "prev-math" : ""; span.textContent = seg.type === "math" ? seg.text.slice(1, -1) : seg.text; if (seg.color) span.style.color = manimHex(seg.color); if (seg.bold) span.style.fontWeight = "bold"; if (seg.italic) span.style.fontStyle = "italic"; if (seg.underline) span.style.textDecoration = "underline"; el.appendChild(span); });
 }
 
-/* ================================================================
-   Code Generation
-   ================================================================ */
 function generateCode() {
-  const codeEl = document.getElementById("code-output");
-  const noteEl = document.getElementById("import-note");
+  const codeEl = document.getElementById("code-output"); const noteEl = document.getElementById("import-note");
   if (!segments.length) { codeEl.textContent = ""; noteEl.textContent = ""; return; }
-
-  const objName  = document.getElementById("obj-name").value || "line1";
+  const objName = document.getElementById("obj-name").value || "line1";
   const fontSize = parseInt(document.getElementById("font-size").value) || 48;
-
-  // Build per-segment LaTeX strings
   const parts = segments.map(seg => formatPart(seg));
-
-  // Collect colors & run_times
-  const colorEntries = [];
-  const timeEntries = [];
-  const usedColors = new Set();
-  segments.forEach((seg, i) => {
-    if (seg.color) { colorEntries.push([i, seg.color]); usedColors.add(seg.color); }
-    if (seg.runTime) { timeEntries.push([i, seg.runTime]); }
-  });
-
-  // Determine needed color imports
+  const colorEntries = [], timeEntries = [], usedColors = new Set();
+  segments.forEach((seg, i) => { if (seg.color) { colorEntries.push([i, seg.color]); usedColors.add(seg.color); } if (seg.runTime) { timeEntries.push([i, seg.runTime]); } });
   const colorNames = [...usedColors].sort();
-
   const fullScene = document.getElementById("full-scene-cb").checked;
-
-  // Helpers for part formatting
-  function fmtPart(p, indent) {
-    const needs_r = p.includes("\\");
-    const q = p.includes('"') ? "'" : '"';
-    return `${indent}${needs_r ? "r" : ""}${q}${p}${q},`;
-  }
-
-  // Build code
+  function fmtPart(p, indent) { const needs_r = p.includes("\\"); const q = p.includes('"') ? "'" : '"'; return `${indent}${needs_r ? "r" : ""}${q}${p}${q},`; }
   let code = "";
-
   if (fullScene) {
-    // ── Full runnable scene ──────────────────────────────────
-    let manimImports = "Scene, Tex, config";
-    if (colorNames.length) manimImports += ", " + colorNames.join(", ");
-    code += `from manim import ${manimImports}\n`;
-    code += "from hebrew_utils import SmartHebWrite, get_hebrew_template\n\n";
-    code += "config.tex_template = get_hebrew_template()\n\n\n";
-    code += `class TestScene(Scene):\n`;
-    code += `    def construct(self):\n`;
-    code += `        ${objName}_parts = (\n`;
-    parts.forEach(p => { code += fmtPart(p, "            ") + "\n"; });
-    code += `        )\n`;
-    code += `        ${objName} = Tex(*${objName}_parts`;
-    if (fontSize !== 48) code += `, font_size=${fontSize}`;
-    code += ")\n";
-    code += `        self.play(SmartHebWrite(\n`;
-    code += `            ${objName},\n`;
-    code += `            tex_strings_source=${objName}_parts,\n`;
-    if (colorEntries.length) {
-      code += `            colors={${colorEntries.map(([i, c]) => `${i}: ${c}`).join(", ")}},\n`;
-    }
-    if (timeEntries.length) {
-      code += `            run_times={${timeEntries.map(([i, t]) => `${i}: ${t}`).join(", ")}},\n`;
-    }
-    code += "        ))\n";
-    code += "        self.wait(1)\n";
-    code += "\n\n";
-    code += "# Run with:\n";
-    code += "#   manim render -pql <filename>.py TestScene\n";
+    let mi = "Scene, Tex, config"; if (colorNames.length) mi += ", " + colorNames.join(", ");
+    code += `from manim import ${mi}\nfrom hebrew_utils import SmartHebWrite, get_hebrew_template\n\nconfig.tex_template = get_hebrew_template()\n\n\nclass TestScene(Scene):\n    def construct(self):\n`;
+    code += `        ${objName}_parts = (\n`; parts.forEach(p => { code += fmtPart(p, "            ") + "\n"; }); code += `        )\n`;
+    code += `        ${objName} = Tex(*${objName}_parts`; if (fontSize !== 48) code += `, font_size=${fontSize}`; code += ")\n";
+    code += `        self.play(SmartHebWrite(\n            ${objName},\n            tex_strings_source=${objName}_parts,\n`;
+    if (colorEntries.length) code += `            colors={${colorEntries.map(([i, c]) => `${i}: ${c}`).join(", ")}},\n`;
+    if (timeEntries.length) code += `            run_times={${timeEntries.map(([i, t]) => `${i}: ${t}`).join(", ")}},\n`;
+    code += "        ))\n        self.wait(1)\n\n\n# Run with:\n#   manim render -pql <filename>.py TestScene\n";
   } else {
-    // ── Snippet mode (original) ──────────────────────────────
-    code += "# ── Required imports ─────────────────────────────────────\n";
-    let manimImports = "Scene, Tex, config";
-    if (colorNames.length) manimImports += ", " + colorNames.join(", ");
-    code += `from manim import ${manimImports}\n`;
-    code += "from hebrew_utils import SmartHebWrite, get_hebrew_template\n\n";
-    code += "# ── Place once at module level ───────────────────────────\n";
-    code += "config.tex_template = get_hebrew_template()\n\n";
-    code += "# ── Inside your Scene.construct() method ─────────────────\n";
-    code += `${objName}_parts = (\n`;
-    parts.forEach(p => { code += fmtPart(p, "    ") + "\n"; });
-    code += ")\n";
-    code += `${objName} = Tex(*${objName}_parts`;
-    if (fontSize !== 48) code += `, font_size=${fontSize}`;
-    code += ")\n";
-    code += `self.play(SmartHebWrite(\n`;
-    code += `    ${objName},\n`;
-    code += `    tex_strings_source=${objName}_parts,\n`;
-    if (colorEntries.length) {
-      code += `    colors={${colorEntries.map(([i, c]) => `${i}: ${c}`).join(", ")}},\n`;
-    }
-    if (timeEntries.length) {
-      code += `    run_times={${timeEntries.map(([i, t]) => `${i}: ${t}`).join(", ")}},\n`;
-    }
+    let mi = "Scene, Tex, config"; if (colorNames.length) mi += ", " + colorNames.join(", ");
+    code += `# ── Required imports ─────────────────────────────────────\nfrom manim import ${mi}\nfrom hebrew_utils import SmartHebWrite, get_hebrew_template\n\n# ── Place once at module level ───────────────────────────\nconfig.tex_template = get_hebrew_template()\n\n# ── Inside your Scene.construct() method ─────────────────\n`;
+    code += `${objName}_parts = (\n`; parts.forEach(p => { code += fmtPart(p, "    ") + "\n"; }); code += ")\n";
+    code += `${objName} = Tex(*${objName}_parts`; if (fontSize !== 48) code += `, font_size=${fontSize}`; code += ")\n";
+    code += `self.play(SmartHebWrite(\n    ${objName},\n    tex_strings_source=${objName}_parts,\n`;
+    if (colorEntries.length) code += `    colors={${colorEntries.map(([i, c]) => `${i}: ${c}`).join(", ")}},\n`;
+    if (timeEntries.length) code += `    run_times={${timeEntries.map(([i, t]) => `${i}: ${t}`).join(", ")}},\n`;
     code += "))\n";
   }
-
   codeEl.textContent = code;
-
-  // Import note
-  const notes = [];
-  notes.push("Ensure hebrew_utils.py is on your Python path (e.g. run from the project root).");
-  if (segments.some(s => s.bold || s.underline))
-    notes.push("Bold/underline use LaTeX commands that require the fonts to support those variants.");
+  const notes = ["Ensure hebrew_utils.py is on your Python path (e.g. run from the project root)."];
+  if (segments.some(s => s.bold || s.underline)) notes.push("Bold/underline use LaTeX commands that require the fonts to support those variants.");
   noteEl.innerHTML = notes.map(n => "&#8226; " + n).join("<br>");
 }
-
 function formatPart(seg) {
-  if (seg.type === "math") {
-    let inner = seg.text.slice(1, -1); // strip $...$
-    if (seg.bold) inner = `\\mathbf{${inner}}`;
-    if (seg.underline) return `\\underline{$${inner}$}`;
-    return `$${inner}$`;
-  }
-  // text
-  let t = seg.text;
-  if (seg.bold) t = `\\textbf{${t}}`;
-  if (seg.italic) t = `\\textit{${t}}`;
-  if (seg.underline) t = `\\underline{${t}}`;
-  return t;
+  if (seg.type === "math") { let inner = seg.text.slice(1, -1); if (seg.bold) inner = `\\mathbf{${inner}}`; if (seg.underline) return `\\underline{$${inner}$}`; return `$${inner}$`; }
+  let t = seg.text; if (seg.bold) t = `\\textbf{${t}}`; if (seg.italic) t = `\\textit{${t}}`; if (seg.underline) t = `\\underline{${t}}`; return t;
+}
+function copyCode() { navigator.clipboard.writeText(document.getElementById("code-output").textContent).then(() => { const btn = document.querySelector("#tab-lines .copy-btn"); btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "Copy", 1500); }); }
+
+/* ================================================================ *
+ *  TAB 2: GRAPHS & AXES                                            *
+ * ================================================================ */
+
+/* ── Constants ────────────────────────────────────────────── */
+const GC_W = 700, GC_H = 394;
+const FRAME_W = 128 / 9, FRAME_H = 8;
+const PPU = GC_W / FRAME_W; // 49.22 px per manim unit
+
+/* ── State ────────────────────────────────────────────────── */
+const G = { axes: [], selIdx: null, nextId: 1, drag: null };
+
+function gMakeAxes() {
+  return {
+    id: G.nextId++, name: `axes${G.axes.length + 1}`,
+    xr: [-5, 5, 1], yr: [-3, 3, 1],
+    xLen: 8, yLen: 5, cx: 0, cy: 0,
+    nums: true, tips: true,
+    xLabel: "x", yLabel: "y",
+    anim: "Create", rt: null,
+    funcs: [], pts: [],
+  };
+}
+function gMakeFunc() { return { expr: "x**2", color: "BLUE", xMin: null, xMax: null }; }
+function gMakePoint() { return { x: 1, y: 1, color: "RED", label: "" }; }
+
+/* ── Coordinate helpers ───────────────────────────────────── */
+function m2px(mx, my) { return [GC_W / 2 + mx * PPU, GC_H / 2 - my * PPU]; }
+function px2m(px, py) { return [(px - GC_W / 2) / PPU, -(py - GC_H / 2) / PPU]; }
+
+function data2m(a, dx, dy) {
+  const mx = a.cx - a.xLen / 2 + (dx - a.xr[0]) / (a.xr[1] - a.xr[0]) * a.xLen;
+  const my = a.cy - a.yLen / 2 + (dy - a.yr[0]) / (a.yr[1] - a.yr[0]) * a.yLen;
+  return [mx, my];
+}
+function data2px(a, dx, dy) { const [mx, my] = data2m(a, dx, dy); return m2px(mx, my); }
+
+/* ── Expression evaluation ────────────────────────────────── */
+function pyToJs(expr) {
+  return expr
+    .replace(/\bnp\./g, "Math.").replace(/\babs\b/g, "Math.abs").replace(/\bsqrt\b/g, "Math.sqrt")
+    .replace(/\bsin\b/g, "Math.sin").replace(/\bcos\b/g, "Math.cos").replace(/\btan\b/g, "Math.tan")
+    .replace(/\bexp\b/g, "Math.exp").replace(/\blog\b/g, "Math.log").replace(/\bpi\b/g, "Math.PI");
+}
+function evalExpr(expr, x) {
+  try { return new Function("x", "return " + pyToJs(expr))(x); }
+  catch { return NaN; }
 }
 
-/* ================================================================
-   Copy
-   ================================================================ */
-function copyCode() {
-  const code = document.getElementById("code-output").textContent;
-  navigator.clipboard.writeText(code).then(() => {
-    const btn = document.querySelector(".copy-btn");
-    btn.textContent = "Copied!";
-    setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+/* ── Canvas drawing ───────────────────────────────────────── */
+function gDrawCanvas() {
+  const cvs = document.getElementById("g-canvas");
+  const ctx = cvs.getContext("2d");
+  ctx.clearRect(0, 0, GC_W, GC_H);
+
+  // Background
+  ctx.fillStyle = "#1a1a2e";
+  ctx.fillRect(0, 0, GC_W, GC_H);
+
+  // Grid
+  ctx.strokeStyle = "rgba(255,255,255,.06)";
+  ctx.lineWidth = 1;
+  for (let u = Math.ceil(-FRAME_W / 2); u <= Math.floor(FRAME_W / 2); u++) {
+    const [px] = m2px(u, 0);
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, GC_H); ctx.stroke();
+  }
+  for (let u = Math.ceil(-FRAME_H / 2); u <= Math.floor(FRAME_H / 2); u++) {
+    const [, py] = m2px(0, u);
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(GC_W, py); ctx.stroke();
+  }
+
+  // Origin crosshair
+  const [ox, oy] = m2px(0, 0);
+  ctx.strokeStyle = "rgba(255,255,255,.15)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, GC_H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(GC_W, oy); ctx.stroke();
+
+  // Draw each axes
+  G.axes.forEach((a, i) => drawAxesObj(ctx, a, i === G.selIdx));
+}
+
+function drawAxesObj(ctx, a, isSel) {
+  const [lx, ty] = m2px(a.cx - a.xLen / 2, a.cy + a.yLen / 2);
+  const [rx, by] = m2px(a.cx + a.xLen / 2, a.cy - a.yLen / 2);
+  const w = rx - lx, h = by - ty;
+
+  // Bounding box
+  ctx.strokeStyle = isSel ? "rgba(67,97,238,.5)" : "rgba(255,255,255,.08)";
+  ctx.lineWidth = isSel ? 2 : 1;
+  ctx.strokeRect(lx, ty, w, h);
+
+  // Determine axis line positions in data space
+  const x0_data = Math.max(a.xr[0], Math.min(a.xr[1], 0));
+  const y0_data = Math.max(a.yr[0], Math.min(a.yr[1], 0));
+
+  // X-axis line (at y=0 or nearest edge)
+  const [xAx_l, xAx_y] = data2px(a, a.xr[0], y0_data);
+  const [xAx_r] = data2px(a, a.xr[1], y0_data);
+  ctx.strokeStyle = "#e0e0e0";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(xAx_l, xAx_y); ctx.lineTo(xAx_r, xAx_y); ctx.stroke();
+
+  // Y-axis line (at x=0 or nearest edge)
+  const [yAx_x, yAx_t] = data2px(a, x0_data, a.yr[1]);
+  const [, yAx_b] = data2px(a, x0_data, a.yr[0]);
+  ctx.beginPath(); ctx.moveTo(yAx_x, yAx_t); ctx.lineTo(yAx_x, yAx_b); ctx.stroke();
+
+  // Tips (arrowheads)
+  if (a.tips) {
+    drawArrow(ctx, xAx_r, xAx_y, 1, 0);
+    drawArrow(ctx, yAx_x, yAx_t, 0, -1);
+  }
+
+  // Ticks & numbers
+  ctx.fillStyle = "#aaa";
+  ctx.font = "9px system-ui";
+  ctx.textAlign = "center";
+  const step_x = a.xr[2] || 1, step_y = a.yr[2] || 1;
+  for (let dx = a.xr[0]; dx <= a.xr[1] + 1e-9; dx += step_x) {
+    const [tx, tky] = data2px(a, dx, y0_data);
+    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(tx, tky - 3); ctx.lineTo(tx, tky + 3); ctx.stroke();
+    if (a.nums && Math.abs(dx) > 1e-9) { ctx.fillText(fmtNum(dx), tx, tky + 13); }
+  }
+  ctx.textAlign = "right";
+  for (let dy = a.yr[0]; dy <= a.yr[1] + 1e-9; dy += step_y) {
+    const [tkx, tky] = data2px(a, x0_data, dy);
+    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(tkx - 3, tky); ctx.lineTo(tkx + 3, tky); ctx.stroke();
+    if (a.nums && Math.abs(dy) > 1e-9) { ctx.fillText(fmtNum(dy), tkx - 6, tky + 3); }
+  }
+
+  // Axis labels
+  ctx.fillStyle = "#ccc"; ctx.font = "bold 11px system-ui";
+  if (a.xLabel) { ctx.textAlign = "center"; ctx.fillText(a.xLabel, xAx_r + 12, xAx_y + 4); }
+  if (a.yLabel) { ctx.textAlign = "center"; ctx.fillText(a.yLabel, yAx_x, yAx_t - 8); }
+
+  // Functions
+  a.funcs.forEach(f => drawFunc(ctx, a, f));
+
+  // Points
+  a.pts.forEach(p => drawPt(ctx, a, p));
+
+  // Resize handles (selected only)
+  if (isSel) {
+    const corners = [[lx, ty], [rx, ty], [lx, by], [rx, by]];
+    ctx.fillStyle = "rgba(67,97,238,.8)";
+    corners.forEach(([cx, cy]) => ctx.fillRect(cx - 4, cy - 4, 8, 8));
+  }
+}
+
+function drawArrow(ctx, x, y, dx, dy) {
+  const s = 7;
+  ctx.fillStyle = "#e0e0e0";
+  ctx.beginPath();
+  ctx.moveTo(x + dx * s, y + dy * s);
+  ctx.lineTo(x + dy * s * 0.5 - dx * 2, y - dx * s * 0.5 - dy * 2);
+  ctx.lineTo(x - dy * s * 0.5 - dx * 2, y + dx * s * 0.5 - dy * 2);
+  ctx.closePath(); ctx.fill();
+}
+
+function drawFunc(ctx, a, f) {
+  const xMin = f.xMin ?? a.xr[0], xMax = f.xMax ?? a.xr[1];
+  const steps = 300;
+  const dx = (xMax - xMin) / steps;
+  ctx.strokeStyle = manimHex(f.color);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i <= steps; i++) {
+    const x = xMin + i * dx;
+    const y = evalExpr(f.expr, x);
+    if (!isFinite(y)) { started = false; continue; }
+    if (y < a.yr[0] - 1 || y > a.yr[1] + 1) { started = false; continue; }
+    const [px, py] = data2px(a, x, y);
+    if (!started) { ctx.moveTo(px, py); started = true; } else { ctx.lineTo(px, py); }
+  }
+  ctx.stroke();
+}
+
+function drawPt(ctx, a, p) {
+  const [px, py] = data2px(a, p.x, p.y);
+  ctx.fillStyle = manimHex(p.color);
+  ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+  if (p.label) { ctx.fillStyle = "#ccc"; ctx.font = "10px system-ui"; ctx.textAlign = "left"; ctx.fillText(p.label, px + 7, py + 3); }
+}
+
+function fmtNum(n) { return Number.isInteger(n) ? n.toString() : n.toFixed(1); }
+
+/* ── Mouse interaction ────────────────────────────────────── */
+const cvs = document.getElementById("g-canvas");
+cvs.addEventListener("mousedown", gMouseDown);
+cvs.addEventListener("mousemove", gMouseMove);
+cvs.addEventListener("mouseup", gMouseUp);
+cvs.addEventListener("mouseleave", gMouseUp);
+
+function getMousePos(e) {
+  const r = cvs.getBoundingClientRect();
+  return [e.clientX - r.left, e.clientY - r.top].map((v, i) => v * (i === 0 ? GC_W / r.width : GC_H / r.height));
+}
+
+function gMouseDown(e) {
+  const [mx, my] = getMousePos(e);
+
+  // Check resize handles on selected axes first
+  if (G.selIdx !== null) {
+    const a = G.axes[G.selIdx];
+    const [lx, ty] = m2px(a.cx - a.xLen / 2, a.cy + a.yLen / 2);
+    const [rx, by] = m2px(a.cx + a.xLen / 2, a.cy - a.yLen / 2);
+    const corners = [[lx, ty], [rx, ty], [lx, by], [rx, by]];
+    for (let ci = 0; ci < 4; ci++) {
+      if (Math.abs(mx - corners[ci][0]) < 8 && Math.abs(my - corners[ci][1]) < 8) {
+        G.drag = { type: "resize", idx: G.selIdx, startMouse: [mx, my], startXLen: a.xLen, startYLen: a.yLen };
+        return;
+      }
+    }
+  }
+
+  // Check if clicking on any axes body (iterate in reverse so topmost wins)
+  for (let i = G.axes.length - 1; i >= 0; i--) {
+    const a = G.axes[i];
+    const [lx, ty] = m2px(a.cx - a.xLen / 2, a.cy + a.yLen / 2);
+    const [rx, by] = m2px(a.cx + a.xLen / 2, a.cy - a.yLen / 2);
+    if (mx >= lx && mx <= rx && my >= ty && my <= by) {
+      G.selIdx = i;
+      G.drag = { type: "move", idx: i, startMouse: [mx, my], startCx: a.cx, startCy: a.cy };
+      gRender();
+      return;
+    }
+  }
+
+  // Clicked empty space — deselect
+  G.selIdx = null;
+  gRender();
+}
+
+function gMouseMove(e) {
+  if (!G.drag) return;
+  const [mx, my] = getMousePos(e);
+  const a = G.axes[G.drag.idx];
+  if (G.drag.type === "move") {
+    const dmx = (mx - G.drag.startMouse[0]) / PPU;
+    const dmy = -(my - G.drag.startMouse[1]) / PPU;
+    a.cx = Math.round((G.drag.startCx + dmx) * 4) / 4;
+    a.cy = Math.round((G.drag.startCy + dmy) * 4) / 4;
+  } else if (G.drag.type === "resize") {
+    const [cx_px, cy_px] = m2px(a.cx, a.cy);
+    a.xLen = Math.max(1, Math.round(Math.abs(mx - cx_px) * 2 / PPU * 4) / 4);
+    a.yLen = Math.max(1, Math.round(Math.abs(my - cy_px) * 2 / PPU * 4) / 4);
+  }
+  gDrawCanvas();
+  gUpdatePropsFields();
+  gGenerateCode();
+}
+
+function gMouseUp() {
+  if (G.drag) { G.drag = null; gRender(); }
+}
+
+/* ── CRUD ─────────────────────────────────────────────────── */
+function gAddAxes() { G.axes.push(gMakeAxes()); G.selIdx = G.axes.length - 1; gRender(); }
+function gRemoveAxes(i) { G.axes.splice(i, 1); if (G.selIdx === i) G.selIdx = G.axes.length ? 0 : null; else if (G.selIdx > i) G.selIdx--; gRender(); }
+function gSelectAxes(i) { G.selIdx = i; gRender(); }
+function gAddFunc() { if (G.selIdx === null) return; G.axes[G.selIdx].funcs.push(gMakeFunc()); gRender(); }
+function gAddPoint() { if (G.selIdx === null) return; G.axes[G.selIdx].pts.push(gMakePoint()); gRender(); }
+function gRemoveFunc(i) { if (G.selIdx === null) return; G.axes[G.selIdx].funcs.splice(i, 1); gRender(); }
+function gRemovePoint(i) { if (G.selIdx === null) return; G.axes[G.selIdx].pts.splice(i, 1); gRender(); }
+
+/* ── UI rendering ─────────────────────────────────────────── */
+function gRender() { gRenderAxesList(); gRenderProps(); gRenderItems(); gDrawCanvas(); gGenerateCode(); }
+
+function gRenderAxesList() {
+  const el = document.getElementById("g-axes-list");
+  if (!G.axes.length) { el.innerHTML = '<span class="g-no-sel">No axes yet.</span>'; return; }
+  el.innerHTML = "";
+  G.axes.forEach((a, i) => {
+    const row = document.createElement("div");
+    row.className = "g-axes-item" + (i === G.selIdx ? " selected" : "");
+    row.onclick = (e) => { if (e.target.tagName !== "INPUT" && !e.target.classList.contains("g-del")) gSelectAxes(i); };
+    const inp = document.createElement("input");
+    inp.value = a.name;
+    inp.oninput = () => { a.name = inp.value; gGenerateCode(); };
+    row.appendChild(inp);
+    const del = document.createElement("span");
+    del.className = "g-del"; del.textContent = "✕"; del.onclick = () => gRemoveAxes(i);
+    row.appendChild(del);
+    el.appendChild(row);
   });
 }
 
-/* ── Init: build color swatches once ──────────────────────── */
+function gRenderProps() {
+  const el = document.getElementById("g-props-body");
+  if (G.selIdx === null) { el.innerHTML = '<span class="g-no-sel">Add and select an axes to edit its properties.</span>'; return; }
+  const a = G.axes[G.selIdx];
+  el.innerHTML = `
+    <div class="g-props">
+      <div class="field"><label>x range</label><div class="range-row">
+        <input type="number" value="${a.xr[0]}" onchange="gSetProp('xr0',this.value)">
+        <span>to</span>
+        <input type="number" value="${a.xr[1]}" onchange="gSetProp('xr1',this.value)">
+        <span>step</span>
+        <input type="number" value="${a.xr[2]}" min="0.1" step="0.5" onchange="gSetProp('xr2',this.value)">
+      </div></div>
+      <div class="field"><label>y range</label><div class="range-row">
+        <input type="number" value="${a.yr[0]}" onchange="gSetProp('yr0',this.value)">
+        <span>to</span>
+        <input type="number" value="${a.yr[1]}" onchange="gSetProp('yr1',this.value)">
+        <span>step</span>
+        <input type="number" value="${a.yr[2]}" min="0.1" step="0.5" onchange="gSetProp('yr2',this.value)">
+      </div></div>
+      <div class="field"><label>x length</label><input id="g-xlen" type="number" step="0.25" min="0.5" value="${a.xLen}" onchange="gSetProp('xLen',this.value)"></div>
+      <div class="field"><label>y length</label><input id="g-ylen" type="number" step="0.25" min="0.5" value="${a.yLen}" onchange="gSetProp('yLen',this.value)"></div>
+      <div class="field"><label>Position x</label><input id="g-cx" type="number" step="0.25" value="${a.cx}" onchange="gSetProp('cx',this.value)"></div>
+      <div class="field"><label>Position y</label><input id="g-cy" type="number" step="0.25" value="${a.cy}" onchange="gSetProp('cy',this.value)"></div>
+      <div class="field"><label>x label</label><input value="${a.xLabel}" onchange="gSetProp('xLabel',this.value)"></div>
+      <div class="field"><label>y label</label><input value="${a.yLabel}" onchange="gSetProp('yLabel',this.value)"></div>
+      <div class="field"><label>Animation</label><select onchange="gSetProp('anim',this.value)">
+        <option ${a.anim==="Create"?"selected":""}>Create</option>
+        <option ${a.anim==="Write"?"selected":""}>Write</option>
+        <option ${a.anim==="FadeIn"?"selected":""}>FadeIn</option>
+      </select></div>
+      <div class="field"><label>Run time</label><input type="number" step="0.5" min="0.1" placeholder="auto" value="${a.rt||""}" onchange="gSetProp('rt',this.value)"></div>
+      <div class="field"><div class="cb-row"><input type="checkbox" ${a.nums?"checked":""} onchange="gSetProp('nums',this.checked)"><label>Numbers</label></div></div>
+      <div class="field"><div class="cb-row"><input type="checkbox" ${a.tips?"checked":""} onchange="gSetProp('tips',this.checked)"><label>Arrow tips</label></div></div>
+    </div>`;
+}
+
+function gUpdatePropsFields() {
+  if (G.selIdx === null) return;
+  const a = G.axes[G.selIdx];
+  const f = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  f("g-xlen", a.xLen); f("g-ylen", a.yLen); f("g-cx", a.cx); f("g-cy", a.cy);
+}
+
+function gSetProp(key, val) {
+  if (G.selIdx === null) return;
+  const a = G.axes[G.selIdx];
+  const n = parseFloat(val);
+  switch (key) {
+    case "xr0": a.xr[0] = n; break; case "xr1": a.xr[1] = n; break; case "xr2": a.xr[2] = Math.max(0.1, n); break;
+    case "yr0": a.yr[0] = n; break; case "yr1": a.yr[1] = n; break; case "yr2": a.yr[2] = Math.max(0.1, n); break;
+    case "xLen": a.xLen = Math.max(0.5, n); break; case "yLen": a.yLen = Math.max(0.5, n); break;
+    case "cx": a.cx = n; break; case "cy": a.cy = n; break;
+    case "xLabel": a.xLabel = val; break; case "yLabel": a.yLabel = val; break;
+    case "anim": a.anim = val; break;
+    case "rt": a.rt = isNaN(n) || n <= 0 ? null : n; break;
+    case "nums": a.nums = val; break; case "tips": a.tips = val; break;
+  }
+  gDrawCanvas(); gGenerateCode();
+}
+
+function gRenderItems() {
+  const el = document.getElementById("g-items-body");
+  if (G.selIdx === null) { el.innerHTML = '<span class="g-no-sel">Select an axes, then add functions or points.</span>'; return; }
+  const a = G.axes[G.selIdx];
+  el.innerHTML = "";
+  if (!a.funcs.length && !a.pts.length) { el.innerHTML = '<span class="g-no-sel">Click "+ Function" or "+ Point" to add items.</span>'; return; }
+
+  a.funcs.forEach((f, i) => {
+    const row = document.createElement("div"); row.className = "g-item-row";
+    row.innerHTML = `
+      <span style="font-size:.75rem;font-weight:700;color:var(--accent)">f${i + 1}</span>
+      <span style="font-size:.8rem">f(x) =</span>
+      <input class="expr-input" value="${esc(f.expr)}" oninput="gSetFunc(${i},'expr',this.value)">
+      <span class="help-tip" data-tip="x**2, x**3\nnp.sin(x), np.cos(x)\nnp.exp(x), np.log(x)\nnp.sqrt(x), 1/x\nabs(x), pi">?</span>
+      <select onchange="gSetFunc(${i},'color',this.value)">${colorOpts(f.color)}</select>
+      <span style="font-size:.8rem">x:</span>
+      <input class="coord-input" placeholder="auto" value="${f.xMin ?? ""}" onchange="gSetFunc(${i},'xMin',this.value)">
+      <span style="font-size:.8rem">to</span>
+      <input class="coord-input" placeholder="auto" value="${f.xMax ?? ""}" onchange="gSetFunc(${i},'xMax',this.value)">
+      <span class="g-del" onclick="gRemoveFunc(${i})">✕</span>`;
+    el.appendChild(row);
+  });
+
+  a.pts.forEach((p, i) => {
+    const row = document.createElement("div"); row.className = "g-item-row";
+    row.innerHTML = `
+      <span style="font-size:.75rem;font-weight:700;color:var(--danger)">p${i + 1}</span>
+      <span style="font-size:.8rem">(</span>
+      <input class="coord-input" type="number" step="0.5" value="${p.x}" onchange="gSetPt(${i},'x',this.value)">
+      <span style="font-size:.8rem">,</span>
+      <input class="coord-input" type="number" step="0.5" value="${p.y}" onchange="gSetPt(${i},'y',this.value)">
+      <span style="font-size:.8rem">)</span>
+      <select onchange="gSetPt(${i},'color',this.value)">${colorOpts(p.color)}</select>
+      <input style="width:70px" placeholder="label" value="${esc(p.label)}" oninput="gSetPt(${i},'label',this.value)">
+      <span class="g-del" onclick="gRemovePoint(${i})">✕</span>`;
+    el.appendChild(row);
+  });
+}
+
+function gSetFunc(i, key, val) {
+  if (G.selIdx === null) return;
+  const f = G.axes[G.selIdx].funcs[i];
+  if (key === "xMin" || key === "xMax") { const n = parseFloat(val); f[key] = isNaN(n) ? null : n; }
+  else f[key] = val;
+  gDrawCanvas(); gGenerateCode();
+}
+function gSetPt(i, key, val) {
+  if (G.selIdx === null) return;
+  const p = G.axes[G.selIdx].pts[i];
+  if (key === "x" || key === "y") p[key] = parseFloat(val) || 0;
+  else p[key] = val;
+  gDrawCanvas(); gGenerateCode();
+}
+
+function colorOpts(sel) {
+  return MANIM_COLORS.map(c => `<option value="${c.name}" ${c.name === sel ? "selected" : ""}>${c.name}</option>`).join("");
+}
+function esc(s) { return s.replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
+
+/* ── Code generation ──────────────────────────────────────── */
+function gGenerateCode() {
+  const el = document.getElementById("g-code-output");
+  if (!G.axes.length) { el.textContent = "# Add an axes to generate code."; return; }
+
+  const usedColors = new Set();
+  G.axes.forEach(a => {
+    a.funcs.forEach(f => usedColors.add(f.color));
+    a.pts.forEach(p => usedColors.add(p.color));
+  });
+
+  let code = "from manim import *\nimport numpy as np\n\n\nclass GraphScene(Scene):\n    def construct(self):\n";
+  const I = "        ";
+
+  G.axes.forEach((a, ai) => {
+    const nm = a.name || `axes${ai + 1}`;
+    code += `${I}${nm} = Axes(\n`;
+    code += `${I}    x_range=[${a.xr[0]}, ${a.xr[1]}, ${a.xr[2]}],\n`;
+    code += `${I}    y_range=[${a.yr[0]}, ${a.yr[1]}, ${a.yr[2]}],\n`;
+    code += `${I}    x_length=${a.xLen},\n`;
+    code += `${I}    y_length=${a.yLen},\n`;
+    const cfg = [];
+    if (a.nums) cfg.push('"include_numbers": True');
+    if (a.tips) cfg.push('"include_tip": True');
+    if (cfg.length) code += `${I}    axis_config={${cfg.join(", ")}},\n`;
+    code += `${I})`;
+    if (a.cx !== 0 || a.cy !== 0) code += gFmtShift(a.cx, a.cy);
+    code += "\n";
+
+    if (a.xLabel || a.yLabel) {
+      const xl = a.xLabel ? `"${a.xLabel}"` : '""';
+      const yl = a.yLabel ? `"${a.yLabel}"` : '""';
+      code += `${I}${nm}_labels = ${nm}.get_axis_labels(x_label=${xl}, y_label=${yl})\n`;
+    }
+
+    a.funcs.forEach((f, fi) => {
+      const fname = `${nm}_f${fi + 1}`;
+      const xr = (f.xMin != null || f.xMax != null)
+        ? `, x_range=[${f.xMin ?? a.xr[0]}, ${f.xMax ?? a.xr[1]}]` : "";
+      code += `${I}${fname} = ${nm}.plot(lambda x: ${f.expr}${xr}, color=${f.color})\n`;
+    });
+
+    a.pts.forEach((p, pi) => {
+      const pname = `${nm}_p${pi + 1}`;
+      code += `${I}${pname} = Dot(${nm}.c2p(${p.x}, ${p.y}), color=${p.color})\n`;
+      if (p.label) code += `${I}${pname}_label = MathTex("${p.label}").scale(0.6).next_to(${pname}, UR, buff=0.1)\n`;
+    });
+    code += "\n";
+  });
+
+  // Animations
+  G.axes.forEach((a, ai) => {
+    const nm = a.name || `axes${ai + 1}`;
+    let playArgs = `${a.anim}(${nm})`;
+    if (a.xLabel || a.yLabel) playArgs += `, Write(${nm}_labels)`;
+    const rt = a.rt ? `, run_time=${a.rt}` : "";
+    code += `${I}self.play(${playArgs}${rt})\n`;
+
+    a.funcs.forEach((f, fi) => {
+      code += `${I}self.play(Create(${nm}_f${fi + 1}), run_time=2)\n`;
+    });
+    a.pts.forEach((p, pi) => {
+      const pname = `${nm}_p${pi + 1}`;
+      if (p.label) code += `${I}self.play(FadeIn(${pname}), Write(${pname}_label))\n`;
+      else code += `${I}self.play(FadeIn(${pname}))\n`;
+    });
+  });
+
+  code += `${I}self.wait(1)\n`;
+  el.textContent = code;
+}
+
+function gFmtShift(cx, cy) {
+  const parts = [];
+  if (cx > 0) parts.push(`RIGHT * ${cx}`);
+  else if (cx < 0) parts.push(`LEFT * ${Math.abs(cx)}`);
+  if (cy > 0) parts.push(`UP * ${cy}`);
+  else if (cy < 0) parts.push(`DOWN * ${Math.abs(cy)}`);
+  return parts.length ? `.shift(${parts.join(" + ")})` : "";
+}
+
+function gCopyCode() {
+  navigator.clipboard.writeText(document.getElementById("g-code-output").textContent).then(() => {
+    const btn = document.querySelector("#tab-graphs .copy-btn");
+    btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "Copy", 1500);
+  });
+}
+
+/* ── Init ─────────────────────────────────────────────────── */
 parseLine();
+gGenerateCode();
 </script>
 </body>
 </html>
