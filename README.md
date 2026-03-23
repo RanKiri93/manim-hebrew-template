@@ -15,7 +15,8 @@
 |---|---|
 | `hebrew_utils.py` | המודול המרכזי — תבנית XeLaTeX, חלוקת גליפים, ואנימציית `SmartHebWrite` |
 | `demo_scene.py` | סצנות דוגמה (מקרים פשוטים וקשים) |
-| `line_builder.html` | כלי ויזואלי לבניית שורות וגרפים — פתחו בדפדפן |
+| `assistant.html` | כלי ויזואלי לבניית שורות וגרפים — פתחו בדפדפן |
+| `manim_assistant/server.py` | שרת MCP — מאפשר לסוכני AI לייצר קוד Manim |
 
 ## התקנה
 
@@ -72,7 +73,7 @@ self.play(SmartHebWrite(
 
 ## כלי עזר ויזואליים
 
-פתחו את `line_builder.html` בדפדפן. הקובץ מכיל שני כלים בלשוניות נפרדות:
+פתחו את `assistant.html` בדפדפן. הקובץ מכיל שני כלים בלשוניות נפרדות:
 
 ### לשונית Hebrew Lines
 
@@ -135,6 +136,34 @@ self.add(group)
 
 for t, parts in zip(lines, all_lines):
     self.play(SmartHebWrite(t, tex_strings_source=parts))
+```
+
+## שרת MCP (לסוכני AI)
+
+הפרויקט כולל שרת [MCP](https://modelcontextprotocol.io/) שמאפשר לסוכני AI (כמו Cursor, Claude וכו׳) לייצר קוד Manim באופן עקבי.
+
+### כלים זמינים
+
+| כלי | תיאור |
+|---|---|
+| `parse_hebrew_text` | פירוק טקסט עברי+מתמטיקה לקטעים (`text` / `math`) |
+| `generate_hebrew_line` | יצירת קוד `SmartHebWrite` מקטעים עם צבעים, עיצוב ותזמון |
+| `generate_graph_scene` | יצירת סצנת `Axes` שלמה עם פונקציות, נקודות ואנימציות |
+
+### משאבים
+
+| URI | תיאור |
+|---|---|
+| `manim://hebrew-guide` | תבניות ו-API של SmartHebWrite |
+| `manim://graph-guide` | תבניות קוד לגרפים ומערכות צירים |
+
+### הפעלה
+
+השרת רשום ב-`.cursor/mcp.json` ונטען אוטומטית ב-Cursor. להתקנה ידנית:
+
+```bash
+pip install "mcp[cli]"
+python manim_assistant/server.py
 ```
 
 ## איך זה עובד מאחורי הקלעים

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "manim-assistant": {
+      "command": "python",
+      "args": ["manim_assistant/server.py"]
+    }
+  }
+}

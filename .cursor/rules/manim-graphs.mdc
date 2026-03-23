@@ -1,0 +1,59 @@
+---
+description: Manim Axes, graphs, and points — code patterns matching the Graphs & Axes builder tool
+alwaysApply: true
+---
+
+# Manim Graphs & Axes
+
+When asked to create graphs, axes, or plots in Manim, follow these patterns (matching `assistant.html` → Graphs & Axes tab output).
+
+## Imports
+
+```python
+from manim import *
+import numpy as np
+```
+
+## Creating Axes
+
+```python
+axes1 = Axes(
+    x_range=[-5, 5, 1],    # [min, max, step]
+    y_range=[-3, 3, 1],
+    x_length=8,             # manim units wide
+    y_length=5,             # manim units tall
+    axis_config={"include_numbers": True, "include_tip": True},
+)
+axes1_labels = axes1.get_axis_labels(x_label="x", y_label="y")
+```
+
+## Positioning
+
+- Centered by default. Use `.shift(RIGHT * 3 + UP * 0.5)` for offset.
+- For side-by-side axes: `.shift(LEFT * 3.5)` and `.shift(RIGHT * 3.5)`.
+
+## Functions and points
+
+```python
+graph = axes1.plot(lambda x: np.sin(x), color=BLUE)
+graph2 = axes1.plot(lambda x: x**2, x_range=[-3, 3], color=GREEN)
+dot = Dot(axes1.c2p(2, 1), color=RED)
+dot_label = MathTex("(2,1)").scale(0.6).next_to(dot, UR, buff=0.1)
+```
+
+## Animation order
+
+1. `self.play(Create(axes), Write(axes_labels))` — axes and labels together
+2. `self.play(Create(graph), run_time=2)` — each function separately
+3. `self.play(FadeIn(dot))` or `self.play(FadeIn(dot), Write(dot_label))` — points last
+
+## Naming convention
+
+- Axes: `axes1`, `axes2`, …
+- Labels: `axes1_labels`
+- Functions: `axes1_f1`, `axes1_f2`, …
+- Points: `axes1_p1`, `axes1_p2`, …
+
+## Helper tool
+
+Open **`assistant.html`** → **Graphs & Axes** tab to visually build axes scenes with drag/resize and get ready-to-paste code.

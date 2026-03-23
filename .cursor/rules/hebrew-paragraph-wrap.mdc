@@ -30,9 +30,11 @@ alwaysApply: true
    - or `VGroup(*lines).arrange(DOWN, aligned_edge=RIGHT)`.
 3. Right edge of all lines aligns (RTL paragraph block).
 
-## Line builder tool
+## Helper tools
 
-- Open **`line_builder.html`** in a browser to interactively build lines with colors, styles (B/I/U), and timing — generates ready-to-use Python code.
+- Open **`assistant.html`** in a browser — it has two tabs:
+  - **Hebrew Lines** — interactively build `SmartHebWrite` lines with colors, styles (B/I/U), and timing.
+  - **Graphs & Axes** — visually construct `Axes` scenes with functions and points (see `manim-graphs` rule).
 
 ## Code style
 
