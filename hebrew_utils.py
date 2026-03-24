@@ -135,6 +135,30 @@ def _best_window(candidates: list, ref_leaves: list) -> list:
 #  Glyph partitioning (the hard part)
 # ---------------------------------------------------------------------------
 
+def _split_rtl_by_charcount(leaves: list, text_strings: list[str]) -> list[list]:
+    """
+    Split *leaves* proportionally to non-whitespace character counts in
+    *text_strings*, ordered rightmost-to-leftmost (RTL reading order).
+
+    More reliable than gap-based splitting when there are no math anchors
+    to constrain the partition.
+    """
+    ordered = sorted(leaves, key=lambda m: m.get_center()[0], reverse=True)
+    counts = [max(1, sum(1 for c in s if not c.isspace())) for s in text_strings]
+    total_chars = sum(counts)
+    total_glyphs = len(ordered)
+    groups: list[list] = []
+    start = 0
+    for j, cc in enumerate(counts):
+        if j == len(counts) - 1:
+            groups.append(ordered[start:])
+        else:
+            n = max(1, round(cc / total_chars * total_glyphs))
+            groups.append(ordered[start : start + n])
+            start += n
+    return groups
+
+
 def _split_rtl(leaves: list, k: int) -> list[list]:
     """
     Split *leaves* into *k* groups by the largest x-gaps, ordered from
@@ -244,7 +268,11 @@ def partition_segments(
         math_ids.update(id(g) for g in matched)
 
     hebrew_leaves = [g for g in all_leaves if id(g) not in math_ids]
-    groups = _split_rtl(hebrew_leaves, len(text_ixs))
+    if not math_ixs and len(text_ixs) > 1:
+        text_strs = [strings[i] for i in sorted(text_ixs)]
+        groups = _split_rtl_by_charcount(hebrew_leaves, text_strs)
+    else:
+        groups = _split_rtl(hebrew_leaves, len(text_ixs))
 
     result: dict[int, VGroup] = {}
     for j, idx in enumerate(sorted(text_ixs)):
