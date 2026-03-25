@@ -57,3 +57,7 @@ dot_label = MathTex("(2,1)").scale(0.6).next_to(dot, UR, buff=0.1)
 ## Helper tool
 
 Open **`assistant.html`** → **Graphs & Axes** tab to visually build axes scenes with drag/resize and get ready-to-paste code.
+
+## Optional voiceover
+
+The same tab can emit **`VoiceoverScene`** code: narration syncs to play order (axes → each graph → each point) with bookmarks `s0`, `s1`, …; optional intro before `s0`; optional **between-step** speech with bookmarks `b0`, `b1`, … (no new animation during that audio). See **`manim-voiceover`** rule and **`assistant.html`** hints.

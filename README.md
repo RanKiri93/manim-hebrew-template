@@ -73,7 +73,7 @@ self.play(SmartHebWrite(
 
 ## כלי עזר ויזואליים
 
-פתחו את `assistant.html` בדפדפן. הקובץ מכיל שני כלים בלשוניות נפרדות:
+פתחו את `assistant.html` בדפדפן. הקובץ מכיל **ארבע לשוניות** (סדר בתפריט): **Hebrew Lines**, **Graphs & Axes**, **Positioning**, **Animations**.
 
 ### לשונית Hebrew Lines
 
@@ -84,18 +84,9 @@ self.play(SmartHebWrite(
 3. **פיצול** קטעי טקסט למקטעי-משנה (למשל, להפריד מילה שרוצים לצבוע)
 4. **צביעה** — בחירת צבע Manim לכל קטע
 5. **עיצוב** — Bold / Italic / Underline (עם פקודות LaTeX מתאימות לעברית ולמתמטיקה)
-6. **תזמון** — `run_time` לכל קטע
+6. **תזמון** — `run_time` לכל קטע (במצב רגיל; ראו Voiceover למטה)
 7. **יצוא קוד** — קוד Python מוכן להדבקה, כולל אפשרות לסצנה שלמה לבדיקה
-
-### לשונית Positioning
-
-בנייה ויזואלית של שרשרת מיקום עבור אובייקטי Manim:
-
-1. **אובייקט ראשי** — שם + בחירת פריסט (Text line / Title / Formula / Axes / Custom) שקובע גודל משוער
-2. **אובייקטי ייחוס** — הוספת אובייקטים שישמשו כיעד ל-`next_to` / `align_to`, ניתנים לגרירה ושינוי גודל על הקנבס
-3. **קנבס תצוגה מקדימה** — פריים 16:9 עם רשת, האובייקט הראשי (כחול) זז לפי שרשרת המיקום, אובייקטי ייחוס (אפור) ניתנים לגרירה
-4. **שרשרת מיקום** — שילוב פקודות `to_edge`, `next_to`, `center`, `shift`, `set_x`, `set_y`, `align_to` שמורצות בסדר
-5. **יצוא קוד** — שורות מיקום מוכנות להדבקה, למשל `line1.next_to(title, DOWN, buff=0.35, aligned_edge=RIGHT)`
+8. **Voiceover (אופציונלי)** — סימון `VoiceoverScene`, ספריית `manim_voiceover`, וסנכרון דיבור לקטעים באמצעות **סימניות** (`s0`, `s1`, …). אפשר **מבוא** לפני הקטע הראשון, בחירת מקור דיבור (מיקרופון / gTTS עברית), ביטוי מדובר לכל קטע, ואופציונלית **דיבור בין קטעים** (סימניות `b0`, `b1`, … — מסך ללא אנימציה חדשה בזמן הדיבור)
 
 ### לשונית Graphs & Axes
 
@@ -108,6 +99,37 @@ self.play(SmartHebWrite(
 5. **פונקציות** — שדה ביטוי Python (למשל `x**2`, `np.sin(x)`) עם tooltip `[?]` לפונקציות נפוצות, צבע, ותחום x אופציונלי
 6. **נקודות** — קואורדינטות `(x, y)`, צבע, ותווית אופציונלית
 7. **יצוא קוד** — סצנת Manim שלמה ומוכנה להרצה עם `Axes`, `plot`, `Dot`, ואנימציות
+8. **Voiceover (אופציונלי)** — סדר אנימציה: צירים (+ תוויות) → כל גרף → כל נקודה; סימניות `s0`, `s1`, …; מבוא; ביטויים לכל שלב; אופציונלית **דיבור בין שלבים** (`b0`, …)
+
+### לשונית Positioning
+
+בנייה ויזואלית של שרשרת מיקום עבור אובייקטי Manim:
+
+1. **אובייקט ראשי** — שם + בחירת פריסט (Text line / Title / Formula / Axes / Custom) שקובע גודל משוער
+2. **אובייקטי ייחוס** — הוספת אובייקטים שישמשו כיעד ל-`next_to` / `align_to`, ניתנים לגרירה ושינוי גודל על הקנבס
+3. **קנבס תצוגה מקדימה** — פריים 16:9 עם רשת, האובייקט הראשי (כחול) זז לפי שרשרת המיקום, אובייקטי ייחוס (אפור) ניתנים לגרירה
+4. **שרשרת מיקום** — שילוב פקודות `to_edge`, `next_to`, `center`, `shift`, `set_x`, `set_y`, `align_to` שמורצות בסדר
+5. **יצוא קוד** — שורות מיקום מוכנות להדבקה, למשל `line1.next_to(title, DOWN, buff=0.35, aligned_edge=RIGHT)`
+
+### לשונית Animations
+
+בניית קטעי קוד לאנימציות נפוצות על אובייקט קיים (שם ניתן לעריכה):
+
+1. **סוגי אנימציה** — `FadeOut`, `Transform` / `ReplacementTransform`, `move_to` / `shift`, `Rotate`, `MoveAlongPath` (קו / קשת / מעגל), `Scale`, `SurroundingRectangle`
+2. **פרמטרים** — לפי סוג (כיוון, יעד, זווית, מסלול, מרכז, צבע מסגרת וכו׳)
+3. **קנבס** — לחלק מהמצבים (יעד הזזה, נקודת סוף במסלול, מרכז מעגל)
+4. **יצוא קוד** — שורות `self.play` (ולעיתים הגדרת `path` או מסגרת) להדבקה ב-`construct`
+5. **Voiceover (אופציונלי)** — אנימציה אחת עם סימנית **`s0`**; מבוא לפני האנימציה; ביטוי מדובר; הערות להדבקה אחרי `set_speech_service` ב-`VoiceoverScene`
+
+### Voiceover — עקרונות משותפים (manim_voiceover)
+
+- הספרייה **`manim_voiceover`** עם **`VoiceoverScene`** ו-**`self.voiceover(text=...)`** ו-**`tracker`** לתזמון.
+- **יישור סימניות (bookmarks)** דורש **Whisper**: `transcription_model="base"` על שירות הדיבור.
+- **עברית ב-Whisper**: `transcription_kwargs={"language": "he"}` (מומלץ כדי למנוע זיהוי שפה שגוי).
+- מקור דיבור: **RecorderService** (מיקרופון) או **GTTSService** (עברית, למשל `lang="iw"`).
+- בעת פיתוח: **`manim render ... --disable_caching`** כדי שהסאונד והסימניות יישארו מסונכרנים.
+
+הנחיות מפורטות לסוכנים ול-Cursor נמצאות ב-**`.cursor/rules/manim-voiceover.mdc`** ובקובץ **`.cursorrules`** בשורש הפרויקט.
 
 ## שליטה מתקדמת
 
@@ -164,8 +186,9 @@ for t, parts in zip(lines, all_lines):
 
 | URI | תיאור |
 |---|---|
-| `manim://hebrew-guide` | תבניות ו-API של SmartHebWrite |
-| `manim://graph-guide` | תבניות קוד לגרפים ומערכות צירים |
+| `manim://hebrew-guide` | תבניות ו-API של SmartHebWrite (קובץ `hebrew-paragraph-wrap.mdc`) |
+| `manim://graph-guide` | תבניות קוד לגרפים ומערכות צירים (`manim-graphs.mdc`) |
+| `manim://voiceover-guide` | Voiceover, סימניות, עברית ב-Whisper, התאמה ל-assistant (`manim-voiceover.mdc`) |
 
 ### הפעלה
 

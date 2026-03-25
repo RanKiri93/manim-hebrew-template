@@ -1,0 +1,24 @@
+# Technion-HebrewManim — Cursor agent hints
+
+## Project rules (authoritative)
+
+Detailed patterns live under **`.cursor/rules/`** (always applied):
+
+| File | Topic |
+|------|--------|
+| `hebrew-paragraph-wrap.mdc` | `SmartHebWrite`, `Tex`, RTL lines, `assistant.html` Hebrew Lines |
+| `manim-graphs.mdc` | `Axes`, plots, points, animation order |
+| `manim-voiceover.mdc` | `manim_voiceover`, `VoiceoverScene`, bookmarks, Hebrew Whisper, `--disable_caching` |
+
+## assistant.html (visual builders)
+
+- **Hebrew Lines** — mixed Hebrew + `$...$` math, `SmartHebWrite` / `partition_segments`, optional **voiceover** (bookmarks per segment, intro, Recorder vs gTTS, optional **voice between segments** `b0`, `b1`, …).
+- **Graphs & Axes** — interactive axes, functions, points; optional **voiceover** (intro, per-step phrases, optional **between steps**).
+- **Positioning** — `next_to` / chain layout on canvas.
+- **Animations** — FadeOut, Transform, Move/Shift, Rotate, MoveAlongPath, Scale, SurroundingRectangle; optional **voiceover** (single `s0`, intro + phrase).
+
+Voiceover code uses `transcription_model="base"` and `transcription_kwargs={"language": "he"}` for Hebrew alignment. Prefer **`manim render ... --disable_caching`** when testing voiceover.
+
+## MCP
+
+Server: `manim_assistant/server.py`. Resources include `manim://hebrew-guide`, `manim://graph-guide`, `manim://voiceover-guide` (see README).

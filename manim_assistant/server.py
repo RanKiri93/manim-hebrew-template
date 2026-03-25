@@ -2,7 +2,8 @@
 MCP server for Manim code generation.
 
 Exposes tools for generating Hebrew text lines (SmartHebWrite) and
-graph/axes scenes, plus resources with API guides.
+graph/axes scenes, plus resources with API guides (including voiceover
+patterns aligned with assistant.html and .cursor/rules).
 """
 
 from __future__ import annotations
@@ -38,6 +39,15 @@ def graph_guide() -> str:
     if path.exists():
         return path.read_text(encoding="utf-8")
     return _GRAPH_GUIDE_FALLBACK
+
+
+@mcp.resource("manim://voiceover-guide")
+def voiceover_guide() -> str:
+    """manim_voiceover, VoiceoverScene, bookmarks, Hebrew Whisper — matches assistant.html voiceover UI."""
+    path = PROJECT_ROOT / ".cursor" / "rules" / "manim-voiceover.mdc"
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return _VOICEOVER_GUIDE_FALLBACK
 
 
 # ---------------------------------------------------------------------------
@@ -356,6 +366,16 @@ dot = Dot(axes1.c2p(2, 1), color=RED)
 1. self.play(Create(axes), Write(axes_labels))
 2. self.play(Create(graph), run_time=2)
 3. self.play(FadeIn(dot))
+"""
+
+_VOICEOVER_GUIDE_FALLBACK = """\
+# Voiceover (manim_voiceover) + Hebrew
+
+- VoiceoverScene + set_speech_service(RecorderService or GTTSService)
+- transcription_model=\"base\" for Whisper bookmarks; transcription_kwargs={\"language\": \"he\"}
+- Bookmarks: <bookmark mark='s0' />, s1, ... Optional between: b0, b1, ...
+- Render with: manim render ... --disable_caching
+- See assistant.html Hebrew Lines, Graphs, Animations tabs for generated code.
 """
 
 # ---------------------------------------------------------------------------

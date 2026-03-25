@@ -32,9 +32,12 @@ alwaysApply: true
 
 ## Helper tools
 
-- Open **`assistant.html`** in a browser — it has two tabs:
-  - **Hebrew Lines** — interactively build `SmartHebWrite` lines with colors, styles (B/I/U), and timing.
-  - **Graphs & Axes** — visually construct `Axes` scenes with functions and points (see `manim-graphs` rule).
+- Open **`assistant.html`** in a browser — four tabs:
+  - **Hebrew Lines** — `SmartHebWrite` lines with colors, styles (B/I/U), timing; optional **voiceover** (bookmarks per segment, intro, Recorder/gTTS, optional speech **between** segments via `b0`, `b1`, …).
+  - **Graphs & Axes** — `Axes`, functions, points (see `manim-graphs`); optional **voiceover** (intro, per-step phrases, optional **between steps**).
+  - **Positioning** — visual chain of `next_to` / alignment.
+  - **Animations** — single-animation snippets (FadeOut, Transform, path moves, etc.); optional **voiceover** (one `s0` bookmark).
+- Voiceover patterns: see **`manim-voiceover`** rule. Generated code uses Whisper + Hebrew: `transcription_model="base"`, `transcription_kwargs={"language": "he"}`; render with **`--disable_caching`**.
 
 ## Code style
 

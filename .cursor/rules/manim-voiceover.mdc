@@ -1,0 +1,77 @@
+---
+description: manim_voiceover + Hebrew — bookmarks, Whisper, VoiceoverScene patterns (assistant.html)
+alwaysApply: true
+---
+
+# Voiceover (manim_voiceover) + Hebrew
+
+Use when generating or editing scenes that sync narration to animation via **bookmarks**.
+
+## Stack
+
+- **`manim_voiceover`**: `VoiceoverScene`, `self.voiceover(text=...)`, `tracker` for timing.
+- **Speech services**: `RecorderService` (mic) or `GTTSService(lang="iw", ...)` from `manim_voiceover.services`.
+- **Bookmark alignment** requires **Whisper**: set `transcription_model="base"` on the speech service.
+- **Hebrew language** for Whisper: `transcription_kwargs={"language": "he"}` (avoids wrong auto-detected language).
+
+Example setup:
+
+```python
+from manim_voiceover import VoiceoverScene
+from manim_voiceover.services.recorder import RecorderService
+
+class MyScene(VoiceoverScene):
+    def construct(self):
+        self.set_speech_service(
+            RecorderService(
+                transcription_model="base",
+                transcription_kwargs={"language": "he"},
+            )
+        )
+```
+
+For gTTS: `from manim_voiceover.services.gtts import GTTSService` and `GTTSService(lang="iw", transcription_model="base", transcription_kwargs={"language": "he"})`.
+
+## Bookmarks in narration text
+
+Use SSML-style tags in the string passed to `self.voiceover(text=...)`:
+
+- `<bookmark mark='s0' />`, `<bookmark mark='s1' />`, … — sync segment animations.
+- `<bookmark mark='b0' />`, … — **optional** “between” speech after one animation finishes and before the next `s` bookmark (no new `self.play` during that audio).
+
+**Intro**: Plain text *before* the first `<bookmark mark='s0' />` plays with nothing animating until `wait_until_bookmark("s0")` completes.
+
+## Typical loop (multi-step)
+
+```python
+with self.voiceover(text="""intro words <bookmark mark='s0' /> first segment speech <bookmark mark='s1' /> second...""") as tracker:
+    self.wait_until_bookmark("s0")
+    self.play(..., run_time=tracker.time_until_bookmark("s1"))
+    self.wait_until_bookmark("s1")
+    self.play(..., run_time=tracker.get_remaining_duration())
+```
+
+With **between** speech after step 0: insert `<bookmark mark='b0' />` between segment 0 speech and segment 1; then after first `self.play` use `time_until_bookmark("b0")`, `wait_until_bookmark("b0")`, `self.wait(tracker.time_until_bookmark("s1"))`, `wait_until_bookmark("s1")`, etc. (see **`assistant.html`** generated code).
+
+## Hebrew Lines + `SmartHebWrite`
+
+- Use `partition_segments(tex, list(parts))` then per-segment `Write` inside the `voiceover` block, with bookmarks `s0`… matching segments.
+- When voiceover is on, per-segment **Wait After** grouping and **run_time** overrides are superseded by bookmark timing.
+
+## Graphs & Axes
+
+- Play order: **axes (+ labels)** → **each graph** → **each point** — bookmarks follow that order (`s0`, `s1`, …).
+- Optional **between steps** fields add `b0`, `b1`, … between consecutive plays.
+
+## Animations tab (single `self.play`)
+
+- One bookmark `s0` for the single animation; optional intro before `s0`.
+- Preamble lines (`path = …`, `rect = SurroundingRectangle(...)`) stay **outside** the `with self.voiceover` block; only the `self.play` is inside.
+
+## Rendering
+
+- Use **`manim render ... --disable_caching`** when developing voiceover scenes so audio/bookmarks stay in sync.
+
+## Helper
+
+Open **`assistant.html`** in a browser — **Hebrew Lines**, **Graphs & Axes**, and **Animations** tabs can generate voiceover-ready code (checkboxes + intro + speech source + phrases + optional “between” where applicable).

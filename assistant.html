@@ -128,7 +128,7 @@ header p { color: var(--text-muted); font-size: .9rem; }
   background: linear-gradient(135deg, #fff 45%, #ef4444 50%, #fff 55%);
   border: 2px solid var(--border);
 }
-#run-time-input { width: 80px; }
+#run-time-input, #wait-after-input { width: 80px; }
 
 /* ── Split UI ─────────────────────────────────────────────── */
 #split-ui { margin-top: 12px; padding: 12px; background: #fefce8; border-radius: 6px; border: 1px solid #fde68a; }
@@ -289,6 +289,7 @@ header p { color: var(--text-muted); font-size: .9rem; }
   <button class="tab-btn active" onclick="switchTab('lines')">Hebrew Lines</button>
   <button class="tab-btn" onclick="switchTab('graphs')">Graphs &amp; Axes</button>
   <button class="tab-btn" onclick="switchTab('positioning')">Positioning</button>
+  <button class="tab-btn" onclick="switchTab('animations')">Animations</button>
 </nav>
 
 <!-- ================================================================
@@ -316,6 +317,30 @@ header p { color: var(--text-muted); font-size: .9rem; }
       <label for="font-size">Font Size</label>
       <input id="font-size" type="number" value="48" min="8" max="200" oninput="generateCode()">
     </div>
+    <div class="field">
+      <label for="wait-after-line">Wait After Line (s)</label>
+      <input id="wait-after-line" type="number" step="0.5" min="0" placeholder="none" value="" oninput="generateCode()">
+    </div>
+  </div>
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;color:var(--text)">
+      <input type="checkbox" id="hl-voiceover-cb" onchange="render()">
+      Voiceover with bookmarks (one per segment)
+    </label>
+    <div class="field" id="hl-voiceover-src-wrap" style="margin-top:10px;display:none;max-width:420px">
+      <label for="hl-voiceover-src">Speech source</label>
+      <select id="hl-voiceover-src" onchange="generateCode()">
+        <option value="recorder" selected>Your voice (microphone, RecorderService)</option>
+        <option value="gtts">Computer voice (gTTS Hebrew)</option>
+      </select>
+    </div>
+    <div class="field" id="hl-voiceover-intro-wrap" style="margin-top:10px;display:none;max-width:560px">
+      <label for="hl-voiceover-intro">Intro before first segment (optional)</label>
+      <textarea id="hl-voiceover-intro" rows="2" placeholder="Say this before anything appears on screen; first segment still starts at bookmark s0." style="width:100%;resize:vertical;font-family:inherit" oninput="generateCode()"></textarea>
+    </div>
+    <p class="note" style="margin-top:8px;margin-bottom:0;font-size:.82rem;display:none" id="hl-voiceover-hint">
+      When enabled, generated code uses <code>VoiceoverScene</code>, <code>partition_segments</code>, and <code>&lt;bookmark mark='s0' /&gt; …</code> so each segment animates at the matching point in your narration. Use <b>Intro before first segment</b> for speech with nothing on screen until <code>s0</code>. Optional <b>Voice between this segment and the next</b> adds extra narration after one <code>Write</code> finishes and before the next bookmark (<code>b0</code>, <code>b1</code>, …) with no new animation during that audio. Bookmarks need <code>transcription_model=&quot;base&quot;</code> (Whisper). We pass <code>transcription_kwargs={&quot;language&quot;: &quot;he&quot;}</code> so Whisper uses <b>Hebrew</b>. Set a <b>spoken phrase</b> per segment in the toolbox (recommended for math segments).
+    </p>
   </div>
 </section>
 
@@ -347,6 +372,18 @@ header p { color: var(--text-muted); font-size: .9rem; }
     <div class="tool-group">
       <label for="run-time-input">Run Time (s)</label>
       <input id="run-time-input" type="number" step="0.1" min="0.1" placeholder="auto" oninput="setRunTime(this.value)">
+    </div>
+    <div class="tool-group">
+      <label for="wait-after-input">Wait After (s)</label>
+      <input id="wait-after-input" type="number" step="0.1" min="0.1" placeholder="none" oninput="setWaitAfter(this.value)">
+    </div>
+    <div class="tool-group" id="voice-text-group" style="display:none;width:100%;flex-basis:100%">
+      <label for="voice-text-input">Spoken phrase (voiceover)</label>
+      <textarea id="voice-text-input" rows="2" placeholder="What you will say for this segment (Hebrew / how to read math)" style="width:100%;resize:vertical;font-family:inherit" oninput="setVoiceText(this.value)"></textarea>
+    </div>
+    <div class="tool-group" id="voice-between-group" style="display:none;width:100%;flex-basis:100%">
+      <label for="voice-between-input">Voice between this segment and the next (optional)</label>
+      <textarea id="voice-between-input" rows="2" placeholder="Extra narration after this segment is drawn, before the next segment starts (screen unchanged)" style="width:100%;resize:vertical;font-family:inherit" oninput="setVoiceBetweenNext(this.value)"></textarea>
     </div>
     <div class="tool-group" id="split-group">
       <label>Split</label>
@@ -420,13 +457,40 @@ header p { color: var(--text-muted); font-size: .9rem; }
   <div id="g-items-body"><span class="g-no-sel">Select an axes, then add functions or points.</span></div>
 </section>
 
+<section id="g-voiceover-section" style="display:none">
+  <h2>Voiceover</h2>
+  <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;color:var(--text)">
+    <input type="checkbox" id="g-vo-cb" onchange="gOnVoiceoverToggle()">
+    Voiceover with bookmarks (axes &rarr; each graph &rarr; each point)
+  </label>
+  <div id="g-vo-panel" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div class="field" style="max-width:520px">
+      <label for="g-vo-intro">Intro before first animation (optional)</label>
+      <textarea id="g-vo-intro" rows="2" style="width:100%;resize:vertical;font-family:inherit" placeholder="Speech before anything is drawn; first drawing starts at bookmark s0." oninput="gGenerateCode()"></textarea>
+    </div>
+    <div class="field" style="max-width:320px;margin-top:10px">
+      <label for="g-vo-src">Speech source</label>
+      <select id="g-vo-src" onchange="gGenerateCode()">
+        <option value="recorder" selected>Your voice (RecorderService)</option>
+        <option value="gtts">Computer voice (gTTS Hebrew)</option>
+      </select>
+    </div>
+    <p class="note" style="margin-top:10px;font-size:.82rem" id="g-vo-hint">
+      Steps match play order: for each axes, first the axes (and axis labels if any), then each function, then each point. Edit phrases below or leave defaults. Optional <b>Between steps</b> adds extra narration after one animation finishes and before the next (bookmarks <code>b0</code>, …) with nothing new on screen during that audio. Use <code>transcription_model=&quot;base&quot;</code> and <code>transcription_kwargs={&quot;language&quot;: &quot;he&quot;}</code> for Hebrew Whisper alignment.
+    </p>
+    <h3 style="margin-top:14px;font-size:.9rem;color:var(--text-muted)">Spoken phrase per step</h3>
+    <div id="g-vo-steps-body"></div>
+  </div>
+</section>
+
 <section>
   <h2>Generated Code</h2>
   <div class="code-wrap">
     <pre><code id="g-code-output" class="code-block"></code></pre>
     <button class="btn-sm btn-primary copy-btn" onclick="gCopyCode()">Copy</button>
   </div>
-  <p class="note">Run with: <code>manim render -pql &lt;filename&gt;.py GraphScene</code></p>
+  <p class="note" id="g-import-note"></p>
+  <p class="note" id="g-run-note">Run with: <code>manim render -pql &lt;filename&gt;.py GraphScene</code></p>
 </section>
 
 </div><!-- /tab-graphs -->
@@ -494,9 +558,93 @@ header p { color: var(--text-muted); font-size: .9rem; }
     <pre><code id="p-code-output" class="code-block"></code></pre>
     <button class="btn-sm btn-primary copy-btn" onclick="pCopyCode()">Copy</button>
   </div>
+  <p class="note" id="p-import-note"></p>
 </section>
 
 </div><!-- /tab-positioning -->
+
+<!-- ================================================================
+     TAB 4: ANIMATIONS
+     ================================================================ -->
+<div id="tab-animations" style="display:none">
+
+<section>
+  <h2>Animation Setup</h2>
+  <div class="settings-row">
+    <div class="field">
+      <label for="a-obj-name">Object Name</label>
+      <input id="a-obj-name" value="obj1" oninput="aGenCode()">
+    </div>
+    <div class="field">
+      <label for="a-type">Animation Type</label>
+      <select id="a-type" onchange="aTypeChanged()">
+        <option value="fade_out">FadeOut</option>
+        <option value="transform">Transform</option>
+        <option value="move_to">Move / Shift</option>
+        <option value="rotate">Rotate</option>
+        <option value="move_along_path">Move Along Path</option>
+        <option value="scale">Scale</option>
+        <option value="surround_rect">Surrounding Rectangle</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="a-run-time">Run Time (s)</label>
+      <input id="a-run-time" type="number" step="0.5" min="0.1" placeholder="auto" oninput="aGenCode()">
+    </div>
+  </div>
+</section>
+
+<section id="a-voiceover-section" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+  <h2>Voiceover (optional)</h2>
+  <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;color:var(--text)">
+    <input type="checkbox" id="a-vo-cb" onchange="aOnVoiceoverToggle()">
+    Voiceover with bookmark (sync this animation to narration)
+  </label>
+  <div id="a-vo-panel" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div class="field" style="max-width:520px">
+      <label for="a-vo-intro">Intro before the animation (optional)</label>
+      <textarea id="a-vo-intro" rows="2" style="width:100%;resize:vertical;font-family:inherit" placeholder="Speech before anything moves; animation starts at bookmark s0." oninput="aGenCode()"></textarea>
+    </div>
+    <div class="field" style="max-width:320px;margin-top:10px">
+      <label for="a-vo-src">Speech source</label>
+      <select id="a-vo-src" onchange="aGenCode()">
+        <option value="recorder" selected>Your voice (RecorderService)</option>
+        <option value="gtts">Computer voice (gTTS Hebrew)</option>
+      </select>
+    </div>
+    <div class="field" style="max-width:560px;margin-top:10px">
+      <label for="a-vo-phrase">Spoken phrase during the animation</label>
+      <input id="a-vo-phrase" type="text" style="width:100%" placeholder="Hebrew or how you describe this motion" oninput="aGenCode()">
+    </div>
+    <p class="note" style="margin-top:10px;font-size:.82rem" id="a-vo-hint">
+      One step: bookmark <code>s0</code> marks when the <code>self.play</code> runs. Use <code>transcription_model=&quot;base&quot;</code> and <code>transcription_kwargs={&quot;language&quot;: &quot;he&quot;}</code> for Hebrew Whisper. Paste into a <code>VoiceoverScene</code> after <code>set_speech_service</code>.
+    </p>
+  </div>
+</section>
+
+<section id="a-params-section">
+  <h2>Parameters</h2>
+  <div id="a-params"></div>
+</section>
+
+<section id="a-canvas-section" style="display:none">
+  <h2>Click to set destination</h2>
+  <div class="p-canvas-wrap">
+    <canvas id="a-canvas" width="700" height="394"></canvas>
+  </div>
+</section>
+
+<section>
+  <h2>Generated Code</h2>
+  <div class="code-wrap">
+    <pre><code id="a-code-output" class="code-block"></code></pre>
+    <button class="btn-sm btn-primary copy-btn" onclick="aCopyCode()">Copy</button>
+  </div>
+  <p class="note" id="a-import-note"></p>
+  <p class="note" id="a-run-note" style="margin-top:8px">Paste into your scene&rsquo;s <code>construct</code>. Run with <code>manim render -pql &lt;file&gt;.py YourScene</code>.</p>
+</section>
+
+</div><!-- /tab-animations -->
 
 <!-- ================================================================
      JAVASCRIPT
@@ -528,12 +676,14 @@ function switchTab(tab) {
   document.getElementById("tab-lines").style.display = tab === "lines" ? "" : "none";
   document.getElementById("tab-graphs").style.display = tab === "graphs" ? "" : "none";
   document.getElementById("tab-positioning").style.display = tab === "positioning" ? "" : "none";
-  const tabs = ["lines", "graphs", "positioning"];
+  document.getElementById("tab-animations").style.display = tab === "animations" ? "" : "none";
+  const tabs = ["lines", "graphs", "positioning", "animations"];
   document.querySelectorAll(".tab-btn").forEach((btn, i) => {
     btn.classList.toggle("active", tabs[i] === tab);
   });
   if (tab === "graphs") gDrawCanvas();
   if (tab === "positioning") pDrawCanvas();
+  if (tab === "animations") { aRenderParams(); aShowCanvas(); aGenCode(); }
 }
 
 /* ================================================================ *
@@ -559,7 +709,7 @@ function parseLine() {
   selectedIdx = null;
   render();
 }
-function makeSeg(text, type) { return { text, type, color: null, bold: false, italic: false, underline: false, runTime: null }; }
+function makeSeg(text, type) { return { text, type, color: null, bold: false, italic: false, underline: false, runTime: null, waitAfter: null, voiceText: null, voiceBetweenNext: null }; }
 
 function render() { renderSegments(); renderToolbox(); renderPreview(); generateCode(); }
 
@@ -583,7 +733,9 @@ function renderSegments() {
     const label = document.createElement("span"); label.className = "seg-label"; label.textContent = seg.type; chip.appendChild(label);
     const indicators = [];
     if (seg.bold) indicators.push("B"); if (seg.italic) indicators.push("I"); if (seg.underline) indicators.push("U");
-    if (seg.color) indicators.push(seg.color); if (seg.runTime) indicators.push(seg.runTime + "s");
+    if (seg.color) indicators.push(seg.color); if (seg.runTime) indicators.push(seg.runTime + "s"); if (seg.waitAfter) indicators.push("\u23F8" + seg.waitAfter + "s");
+    if (document.getElementById("hl-voiceover-cb") && document.getElementById("hl-voiceover-cb").checked && (seg.voiceText || seg.type === "math")) indicators.push("VO");
+    if (document.getElementById("hl-voiceover-cb") && document.getElementById("hl-voiceover-cb").checked && i < segments.length - 1 && seg.voiceBetweenNext && String(seg.voiceBetweenNext).trim()) indicators.push("VO+");
     if (indicators.length) { const si = document.createElement("span"); si.className = "style-indicators"; si.textContent = indicators.join(" · "); chip.appendChild(si); }
     c.appendChild(chip);
   });
@@ -604,6 +756,18 @@ function renderToolbox() {
   document.getElementById("btn-italic").className = "style-btn" + (seg.italic ? " active" : "") + (seg.type === "math" ? " disabled" : "");
   document.getElementById("btn-underline").className = "style-btn" + (seg.underline ? " active" : "");
   document.getElementById("run-time-input").value = seg.runTime || "";
+  document.getElementById("wait-after-input").value = seg.waitAfter || "";
+  const voOn = document.getElementById("hl-voiceover-cb").checked;
+  const vtg = document.getElementById("voice-text-group");
+  vtg.style.display = voOn ? "" : "none";
+  if (voOn) document.getElementById("voice-text-input").value = seg.voiceText || "";
+  const vbg = document.getElementById("voice-between-group");
+  if (voOn && selectedIdx < segments.length - 1) {
+    vbg.style.display = "";
+    document.getElementById("voice-between-input").value = seg.voiceBetweenNext || "";
+  } else {
+    vbg.style.display = "none";
+  }
   document.getElementById("split-group").style.display = seg.type === "text" ? "" : "none";
   document.getElementById("math-caution").style.display = seg.type === "math" ? "" : "none";
 }
@@ -611,6 +775,9 @@ function renderToolbox() {
 function selectSegment(i) { selectedIdx = i; render(); }
 function toggleStyle(prop) { if (selectedIdx === null) return; const seg = segments[selectedIdx]; if (prop === "italic" && seg.type === "math") return; seg[prop] = !seg[prop]; render(); }
 function setRunTime(val) { if (selectedIdx === null) return; const v = parseFloat(val); segments[selectedIdx].runTime = (isNaN(v) || v <= 0) ? null : v; renderPreview(); generateCode(); }
+function setWaitAfter(val) { if (selectedIdx === null) return; const v = parseFloat(val); segments[selectedIdx].waitAfter = (isNaN(v) || v <= 0) ? null : v; renderSegments(); generateCode(); }
+function setVoiceText(val) { if (selectedIdx === null) return; const t = val.trim(); segments[selectedIdx].voiceText = t ? t : null; renderSegments(); generateCode(); }
+function setVoiceBetweenNext(val) { if (selectedIdx === null) return; const t = val.trim(); segments[selectedIdx].voiceBetweenNext = t ? t : null; renderSegments(); generateCode(); }
 
 function enterSplitMode() {
   if (selectedIdx === null || segments[selectedIdx].type === "math") return;
@@ -623,17 +790,33 @@ function enterSplitMode() {
   }
 }
 function exitSplitMode() { splitMode = false; document.getElementById("split-ui").style.display = "none"; }
-function doSplit(pos) { const seg = segments[selectedIdx]; const before = { ...seg, text: seg.text.slice(0, pos) }; const after = { ...seg, text: seg.text.slice(pos) }; const ins = []; if (before.text) ins.push(before); if (after.text) ins.push(after); segments.splice(selectedIdx, 1, ...ins); exitSplitMode(); render(); }
-function mergeWithPrev() { if (selectedIdx === null || selectedIdx === 0) return; const prev = segments[selectedIdx - 1]; const cur = segments[selectedIdx]; if (prev.type !== "text" || cur.type !== "text") return; prev.text += cur.text; segments.splice(selectedIdx, 1); selectedIdx--; render(); }
+function doSplit(pos) { const seg = segments[selectedIdx]; const before = { ...seg, text: seg.text.slice(0, pos), voiceBetweenNext: null }; const after = { ...seg, text: seg.text.slice(pos), voiceBetweenNext: seg.voiceBetweenNext || null }; const ins = []; if (before.text) ins.push(before); if (after.text) ins.push(after); segments.splice(selectedIdx, 1, ...ins); exitSplitMode(); render(); }
+function mergeWithPrev() { if (selectedIdx === null || selectedIdx === 0) return; const prev = segments[selectedIdx - 1]; const cur = segments[selectedIdx]; if (prev.type !== "text" || cur.type !== "text") return; prev.text += cur.text; if (prev.voiceText || cur.voiceText) { const m = [prev.voiceText, cur.voiceText].filter(Boolean).join(" ").trim(); prev.voiceText = m || null; } prev.voiceBetweenNext = cur.voiceBetweenNext || null; segments.splice(selectedIdx, 1); selectedIdx--; render(); }
 
 function renderPreview() {
   const el = document.getElementById("preview"); if (!segments.length) { el.innerHTML = ""; return; } el.innerHTML = "";
   segments.forEach(seg => { const span = document.createElement("span"); span.className = seg.type === "math" ? "prev-math" : ""; span.textContent = seg.type === "math" ? seg.text.slice(1, -1) : seg.text; if (seg.color) span.style.color = manimHex(seg.color); if (seg.bold) span.style.fontWeight = "bold"; if (seg.italic) span.style.fontStyle = "italic"; if (seg.underline) span.style.textDecoration = "underline"; el.appendChild(span); });
 }
 
+function pyStrTriple(s) {
+  return '"""' + s.replace(/\\/g, "\\\\").replace(/"""/g, '\\"\\"\\"') + '"""';
+}
+function spokenForSeg(i) {
+  const seg = segments[i];
+  if (seg.voiceText && String(seg.voiceText).trim()) return String(seg.voiceText).trim();
+  if (seg.type === "text") return seg.text;
+  return "[math " + i + "]";
+}
+
 function generateCode() {
   const codeEl = document.getElementById("code-output"); const noteEl = document.getElementById("import-note");
-  if (!segments.length) { codeEl.textContent = ""; noteEl.textContent = ""; return; }
+  if (!segments.length) {
+    codeEl.textContent = ""; noteEl.textContent = "";
+    const h0 = document.getElementById("hl-voiceover-hint"); if (h0) h0.style.display = "none";
+    const iw0 = document.getElementById("hl-voiceover-intro-wrap"); if (iw0) iw0.style.display = "none";
+    const sw0 = document.getElementById("hl-voiceover-src-wrap"); if (sw0) sw0.style.display = "none";
+    return;
+  }
   const objName = document.getElementById("obj-name").value || "line1";
   const fontSize = parseInt(document.getElementById("font-size").value) || 48;
   const parts = segments.map(seg => formatPart(seg));
@@ -641,30 +824,152 @@ function generateCode() {
   segments.forEach((seg, i) => { if (seg.color) { colorEntries.push([i, seg.color]); usedColors.add(seg.color); } if (seg.runTime) { timeEntries.push([i, seg.runTime]); } });
   const colorNames = [...usedColors].sort();
   const fullScene = document.getElementById("full-scene-cb").checked;
+  const voiceoverBookmarks = document.getElementById("hl-voiceover-cb").checked;
+  const hintEl = document.getElementById("hl-voiceover-hint");
+  const srcWrap = document.getElementById("hl-voiceover-src-wrap");
+  const introWrap = document.getElementById("hl-voiceover-intro-wrap");
+  if (hintEl) hintEl.style.display = voiceoverBookmarks ? "block" : "none";
+  if (srcWrap) srcWrap.style.display = voiceoverBookmarks ? "block" : "none";
+  if (introWrap) introWrap.style.display = voiceoverBookmarks ? "block" : "none";
+  const voSpeechSrc = (document.getElementById("hl-voiceover-src") && document.getElementById("hl-voiceover-src").value) || "recorder";
+  const hasSegWaits = segments.some(s => s.waitAfter);
+  const lwv = parseFloat(document.getElementById("wait-after-line").value);
+  const lineWait = (!isNaN(lwv) && lwv > 0) ? lwv : null;
+
+  let groups = null;
+  if (hasSegWaits && !voiceoverBookmarks) {
+    groups = [];
+    let cur = { indices: [], waitAfter: null };
+    segments.forEach((seg, i) => {
+      cur.indices.push(i);
+      if (seg.waitAfter) { cur.waitAfter = seg.waitAfter; groups.push(cur); cur = { indices: [], waitAfter: null }; }
+    });
+    if (cur.indices.length) groups.push(cur);
+  }
+
   function fmtPart(p, indent) { const needs_r = p.includes("\\"); const q = p.includes('"') ? "'" : '"'; return `${indent}${needs_r ? "r" : ""}${q}${p}${q},`; }
+
+  function genVoiceoverAnim(indent, nm) {
+    const n = segments.length;
+    const introEl = document.getElementById("hl-voiceover-intro");
+    const introRaw = introEl ? introEl.value.trim() : "";
+    const voParts = [];
+    for (let i = 0; i < n; i++) {
+      voParts.push(`<bookmark mark='s${i}' />` + spokenForSeg(i));
+      if (i < n - 1 && segments[i].voiceBetweenNext && String(segments[i].voiceBetweenNext).trim()) {
+        voParts.push(`<bookmark mark='b${i}' />` + String(segments[i].voiceBetweenNext).trim());
+      }
+    }
+    const core = voParts.join(" ");
+    const voText = introRaw ? `${introRaw} ${core}` : core;
+    let c = `${indent}${nm}_segs = partition_segments(${nm}, list(${nm}_parts))\n`;
+    colorEntries.forEach(([i, col]) => { c += `${indent}${nm}_segs[${i}].set_color(${col})\n`; });
+    c += `${indent}with self.voiceover(text=${pyStrTriple(voText)}) as tracker:\n`;
+    c += `${indent}    self.wait_until_bookmark("s0")\n`;
+    if (n === 1) {
+      c += `${indent}    self.play(Write(${nm}_segs[0]), run_time=tracker.get_remaining_duration())\n`;
+    } else {
+      for (let i = 0; i < n - 1; i++) {
+        const hasBt = segments[i].voiceBetweenNext && String(segments[i].voiceBetweenNext).trim();
+        if (hasBt) {
+          c += `${indent}    self.play(Write(${nm}_segs[${i}]), run_time=tracker.time_until_bookmark("b${i}"))\n`;
+          c += `${indent}    self.wait_until_bookmark("b${i}")\n`;
+          c += `${indent}    self.wait(tracker.time_until_bookmark("s${i + 1}"))\n`;
+          c += `${indent}    self.wait_until_bookmark("s${i + 1}")\n`;
+        } else {
+          c += `${indent}    self.play(Write(${nm}_segs[${i}]), run_time=tracker.time_until_bookmark("s${i + 1}"))\n`;
+          c += `${indent}    self.wait_until_bookmark("s${i + 1}")\n`;
+        }
+      }
+      c += `${indent}    self.play(Write(${nm}_segs[${n - 1}]), run_time=tracker.get_remaining_duration())\n`;
+    }
+    if (lineWait) c += `${indent}self.wait(${lineWait})\n`;
+    return c;
+  }
+
+  function genAnimBlock(indent, nm) {
+    let c = "";
+    if (hasSegWaits) {
+      c += `${indent}${nm}_segs = partition_segments(${nm}, list(${nm}_parts))\n`;
+      colorEntries.forEach(([i, col]) => { c += `${indent}${nm}_segs[${i}].set_color(${col})\n`; });
+      groups.forEach(g => {
+        const writes = g.indices.map(i => `Write(${nm}_segs[${i}])`).join(", ");
+        const grt = g.indices.map(i => segments[i].runTime).filter(t => t);
+        const rtStr = grt.length ? `, run_time=${Math.max(...grt)}` : "";
+        c += `${indent}self.play(${writes}${rtStr})\n`;
+        if (g.waitAfter) c += `${indent}self.wait(${g.waitAfter})\n`;
+      });
+    } else {
+      c += `${indent}self.play(SmartHebWrite(\n${indent}    ${nm},\n${indent}    tex_strings_source=${nm}_parts,\n`;
+      if (colorEntries.length) c += `${indent}    colors={${colorEntries.map(([i, col]) => `${i}: ${col}`).join(", ")}},\n`;
+      if (timeEntries.length) c += `${indent}    run_times={${timeEntries.map(([i, t]) => `${i}: ${t}`).join(", ")}},\n`;
+      c += `${indent}))\n`;
+    }
+    if (lineWait) c += `${indent}self.wait(${lineWait})\n`;
+    return c;
+  }
+
   let code = "";
-  if (fullScene) {
-    let mi = "Scene, Tex, config"; if (colorNames.length) mi += ", " + colorNames.join(", ");
-    code += `from manim import ${mi}\nfrom hebrew_utils import SmartHebWrite, get_hebrew_template\n\nconfig.tex_template = get_hebrew_template()\n\n\nclass TestScene(Scene):\n    def construct(self):\n`;
+  if (voiceoverBookmarks) {
+    const voTk = `, transcription_kwargs={"language": "he"}`;
+    const voInit = voSpeechSrc === "gtts"
+      ? `        self.set_speech_service(GTTSService(lang="iw", transcription_model="base"${voTk}))\n`
+      : `        self.set_speech_service(RecorderService(transcription_model="base"${voTk}))\n`;
+    const voImportsFull = voSpeechSrc === "gtts"
+      ? `from manim_voiceover import VoiceoverScene\nfrom manim_voiceover.services.gtts import GTTSService\n`
+      : `from manim_voiceover import VoiceoverScene\nfrom manim_voiceover.services.recorder import RecorderService\n`;
+    if (fullScene) {
+      code += `from manim import *\n${voImportsFull}from hebrew_utils import partition_segments, get_hebrew_template\n\nconfig.tex_template = get_hebrew_template()\n\n\nclass TestScene(VoiceoverScene):\n    def construct(self):\n`;
+      code += voInit;
+      code += `        ${objName}_parts = (\n`; parts.forEach(p => { code += fmtPart(p, "            ") + "\n"; }); code += `        )\n`;
+      code += `        ${objName} = Tex(*${objName}_parts`; if (fontSize !== 48) code += `, font_size=${fontSize}`; code += ")\n";
+      code += genVoiceoverAnim("        ", objName);
+      if (!lineWait) code += "        self.wait(1)\n";
+      code += "\n\n# Run with:\n#   manim render -pql <filename>.py TestScene --disable_caching\n";
+    } else {
+      code += `# ── Voiceover + bookmarks: inherit VoiceoverScene and set a speech service ──\n`;
+      if (voSpeechSrc === "gtts") {
+        code += `# from manim_voiceover import VoiceoverScene\n# from manim_voiceover.services.gtts import GTTSService\n`;
+        code += `# def construct(self):\n#     self.set_speech_service(GTTSService(lang="iw", transcription_model="base", transcription_kwargs={"language": "he"}))\n\n`;
+      } else {
+        code += `# from manim_voiceover import VoiceoverScene\n# from manim_voiceover.services.recorder import RecorderService\n`;
+        code += `# def construct(self):\n#     self.set_speech_service(RecorderService(transcription_model="base", transcription_kwargs={"language": "he"}))\n\n`;
+      }
+      code += `# ── Required imports ─────────────────────────────────────\nfrom manim import *\nfrom hebrew_utils import partition_segments, get_hebrew_template\n\n# ── Place once at module level ───────────────────────────\nconfig.tex_template = get_hebrew_template()\n\n# ── Inside your VoiceoverScene.construct() method ─────────\n`;
+      code += `${objName}_parts = (\n`; parts.forEach(p => { code += fmtPart(p, "    ") + "\n"; }); code += ")\n";
+      code += `${objName} = Tex(*${objName}_parts`; if (fontSize !== 48) code += `, font_size=${fontSize}`; code += ")\n";
+      code += genVoiceoverAnim("", objName);
+    }
+  } else if (fullScene) {
+    const hebImp = hasSegWaits ? "partition_segments, get_hebrew_template" : "SmartHebWrite, get_hebrew_template";
+    code += `from manim import *\nfrom hebrew_utils import ${hebImp}\n\nconfig.tex_template = get_hebrew_template()\n\n\nclass TestScene(Scene):\n    def construct(self):\n`;
     code += `        ${objName}_parts = (\n`; parts.forEach(p => { code += fmtPart(p, "            ") + "\n"; }); code += `        )\n`;
     code += `        ${objName} = Tex(*${objName}_parts`; if (fontSize !== 48) code += `, font_size=${fontSize}`; code += ")\n";
-    code += `        self.play(SmartHebWrite(\n            ${objName},\n            tex_strings_source=${objName}_parts,\n`;
-    if (colorEntries.length) code += `            colors={${colorEntries.map(([i, c]) => `${i}: ${c}`).join(", ")}},\n`;
-    if (timeEntries.length) code += `            run_times={${timeEntries.map(([i, t]) => `${i}: ${t}`).join(", ")}},\n`;
-    code += "        ))\n        self.wait(1)\n\n\n# Run with:\n#   manim render -pql <filename>.py TestScene\n";
+    code += genAnimBlock("        ", objName);
+    if (!lineWait) code += "        self.wait(1)\n";
+    code += "\n\n# Run with:\n#   manim render -pql <filename>.py TestScene\n";
   } else {
-    let mi = "Scene, Tex, config"; if (colorNames.length) mi += ", " + colorNames.join(", ");
-    code += `# ── Required imports ─────────────────────────────────────\nfrom manim import ${mi}\nfrom hebrew_utils import SmartHebWrite, get_hebrew_template\n\n# ── Place once at module level ───────────────────────────\nconfig.tex_template = get_hebrew_template()\n\n# ── Inside your Scene.construct() method ─────────────────\n`;
+    const hebImp = hasSegWaits ? "partition_segments, get_hebrew_template" : "SmartHebWrite, get_hebrew_template";
+    code += `# ── Required imports ─────────────────────────────────────\nfrom manim import *\nfrom hebrew_utils import ${hebImp}\n\n# ── Place once at module level ───────────────────────────\nconfig.tex_template = get_hebrew_template()\n\n# ── Inside your Scene.construct() method ─────────────────\n`;
     code += `${objName}_parts = (\n`; parts.forEach(p => { code += fmtPart(p, "    ") + "\n"; }); code += ")\n";
     code += `${objName} = Tex(*${objName}_parts`; if (fontSize !== 48) code += `, font_size=${fontSize}`; code += ")\n";
-    code += `self.play(SmartHebWrite(\n    ${objName},\n    tex_strings_source=${objName}_parts,\n`;
-    if (colorEntries.length) code += `    colors={${colorEntries.map(([i, c]) => `${i}: ${c}`).join(", ")}},\n`;
-    if (timeEntries.length) code += `    run_times={${timeEntries.map(([i, t]) => `${i}: ${t}`).join(", ")}},\n`;
-    code += "))\n";
+    code += genAnimBlock("", objName);
   }
   codeEl.textContent = code;
   const notes = ["Ensure hebrew_utils.py is on your Python path (e.g. run from the project root)."];
   if (segments.some(s => s.bold || s.underline)) notes.push("Bold/underline use LaTeX commands that require the fonts to support those variants.");
+  if (voiceoverBookmarks) {
+    notes.push("Bookmarks need Whisper: <code>transcription_model=&quot;base&quot;</code> plus <code>transcription_kwargs={&quot;language&quot;: &quot;he&quot;}</code> so alignment uses Hebrew (not auto-detected German/English). Render with <code>--disable_caching</code>.");
+    notes.push("Spoken text is built from each segment&rsquo;s &ldquo;Spoken phrase&rdquo; field; if empty, text segments use the segment text and math segments use a <code>[math i]</code> placeholder.");
+    if (hasSegWaits || segments.some(s => s.waitAfter)) notes.push("With Voiceover bookmarks on, per-segment &ldquo;Wait After&rdquo; grouping is ignored for animation (timing follows the narration).");
+    if (timeEntries.length) notes.push("Per-segment Run Time is ignored when using Voiceover bookmarks (use bookmark timing instead).");
+    if (voSpeechSrc === "recorder") notes.push("Recorder: install <code>pyaudio</code>, pick mic in the terminal, then record each line; choose <b>accept</b> when happy. Whisper runs after recording to align bookmarks.");
+    const introNote = document.getElementById("hl-voiceover-intro") && document.getElementById("hl-voiceover-intro").value.trim();
+    if (introNote) notes.push("<b>Intro:</b> spoken before <code>s0</code>; <code>wait_until_bookmark(&quot;s0&quot;)</code> covers the intro, then the first <code>Write</code> runs.");
+    if (segments.some((s, i) => i < segments.length - 1 && s.voiceBetweenNext && String(s.voiceBetweenNext).trim())) notes.push("<b>Between segments:</b> optional text uses bookmarks <code>b0</code>, <code>b1</code>, …; the scene waits (no new animation) while that audio plays, then continues at <code>s1</code>, <code>s2</code>, ….");
+  } else {
+    if (hasSegWaits) notes.push("partition_segments splits the Tex into per-segment VGroups for individual animation control.");
+  }
   noteEl.innerHTML = notes.map(n => "&#8226; " + n).join("<br>");
 }
 function formatPart(seg) {
@@ -683,7 +988,7 @@ const FRAME_W = 128 / 9, FRAME_H = 8;
 const PPU = GC_W / FRAME_W; // 49.22 px per manim unit
 
 /* ── State ────────────────────────────────────────────────── */
-const G = { axes: [], selIdx: null, nextId: 1, drag: null };
+const G = { axes: [], selIdx: null, nextId: 1, drag: null, voiceTexts: [], betweenTexts: [] };
 
 function gMakeAxes() {
   return {
@@ -943,7 +1248,153 @@ function gRemoveFunc(i) { if (G.selIdx === null) return; G.axes[G.selIdx].funcs.
 function gRemovePoint(i) { if (G.selIdx === null) return; G.axes[G.selIdx].pts.splice(i, 1); gRender(); }
 
 /* ── UI rendering ─────────────────────────────────────────── */
-function gRender() { gRenderAxesList(); gRenderProps(); gRenderItems(); gDrawCanvas(); gGenerateCode(); }
+function gRender() {
+  gRenderAxesList(); gRenderProps(); gRenderItems(); gDrawCanvas();
+  const gVsec = document.getElementById("g-voiceover-section");
+  if (gVsec) gVsec.style.display = G.axes.length ? "" : "none";
+  if (!G.axes.length) {
+    const cb = document.getElementById("g-vo-cb");
+    if (cb) cb.checked = false;
+    const pan = document.getElementById("g-vo-panel");
+    if (pan) pan.style.display = "none";
+  }
+  gRenderVoiceoverSteps();
+  gGenerateCode();
+}
+function gOnVoiceoverToggle() {
+  const on = document.getElementById("g-vo-cb").checked;
+  document.getElementById("g-vo-panel").style.display = on ? "block" : "none";
+  gRenderVoiceoverSteps();
+  gGenerateCode();
+}
+function gEnsureGraphVoiceTexts(n) {
+  while (G.voiceTexts.length < n) G.voiceTexts.push("");
+  if (G.voiceTexts.length > n) G.voiceTexts.length = n;
+}
+function gEnsureGraphBetweenTexts(nSteps) {
+  const nGap = Math.max(0, nSteps - 1);
+  while (G.betweenTexts.length < nGap) G.betweenTexts.push("");
+  if (G.betweenTexts.length > nGap) G.betweenTexts.length = nGap;
+}
+function gBuildGraphAnimSteps() {
+  const steps = [];
+  G.axes.forEach((a, ai) => {
+    const nm = a.name || `axes${ai + 1}`;
+    let playArgs = `${a.anim}(${nm})`;
+    if (a.xLabel || a.yLabel) playArgs += `, Write(${nm}_labels)`;
+    const rt = a.rt ? `, run_time=${a.rt}` : "";
+    steps.push({
+      type: "axes",
+      line: `self.play(${playArgs}${rt})`,
+      defaultSpoken: `צירים ${nm}`,
+    });
+    a.funcs.forEach((f, fi) => {
+      steps.push({
+        type: "graph",
+        line: `self.play(Create(${nm}_f${fi + 1}), run_time=2)`,
+        defaultSpoken: `גרף ${fi + 1}`,
+      });
+    });
+    a.pts.forEach((p, pi) => {
+      const pname = `${nm}_p${pi + 1}`;
+      steps.push({
+        type: "point",
+        line: p.label
+          ? `self.play(FadeIn(${pname}), Write(${pname}_label))`
+          : `self.play(FadeIn(${pname}))`,
+        defaultSpoken: `נקודה ${pi + 1}`,
+      });
+    });
+  });
+  return steps;
+}
+function gSpokenGraphStep(i, steps) {
+  const t = (G.voiceTexts[i] && String(G.voiceTexts[i]).trim());
+  return t || steps[i].defaultSpoken;
+}
+function gVoPlayLine(line, markOrNull) {
+  let l = line.replace(/,\s*run_time=[\d.]+(?=\))/, "");
+  const rt = markOrNull === null
+    ? ", run_time=tracker.get_remaining_duration()"
+    : `, run_time=tracker.time_until_bookmark("${markOrNull}")`;
+  return l.replace(/\)$/, rt + ")");
+}
+function gGenGraphVoiceoverAnim(II, steps, betweenTexts) {
+  const inner = "            ";
+  const n = steps.length;
+  const hasBetween = (i) => betweenTexts && betweenTexts[i] && String(betweenTexts[i]).trim();
+  let b = `${inner}self.wait_until_bookmark("s0")\n`;
+  if (n === 1) {
+    b += `${inner}${gVoPlayLine(steps[0].line, null)}\n`;
+    return b;
+  }
+  for (let i = 0; i < n - 1; i++) {
+    if (hasBetween(i)) {
+      b += `${inner}${gVoPlayLine(steps[i].line, "b" + i)}\n`;
+      b += `${inner}self.wait_until_bookmark("b${i}")\n`;
+      b += `${inner}self.wait(tracker.time_until_bookmark("s${i + 1}"))\n`;
+      b += `${inner}self.wait_until_bookmark("s${i + 1}")\n`;
+    } else {
+      b += `${inner}${gVoPlayLine(steps[i].line, "s" + (i + 1))}\n`;
+      b += `${inner}self.wait_until_bookmark("s${i + 1}")\n`;
+    }
+  }
+  b += `${inner}${gVoPlayLine(steps[n - 1].line, null)}\n`;
+  return b;
+}
+function gRenderVoiceoverSteps() {
+  const body = document.getElementById("g-vo-steps-body");
+  if (!body || !document.getElementById("g-vo-cb") || !document.getElementById("g-vo-cb").checked || !G.axes.length) {
+    if (body) body.innerHTML = "";
+    return;
+  }
+  const steps = gBuildGraphAnimSteps();
+  gEnsureGraphVoiceTexts(steps.length);
+  gEnsureGraphBetweenTexts(steps.length);
+  body.innerHTML = "";
+  steps.forEach((s, i) => {
+    const row = document.createElement("div");
+    row.className = "field";
+    row.style.marginBottom = "10px";
+    const lab = document.createElement("label");
+    lab.textContent = `Step ${i + 1} (${s.type})`;
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.style.width = "100%";
+    inp.placeholder = s.defaultSpoken;
+    inp.value = G.voiceTexts[i] !== "" ? G.voiceTexts[i] : s.defaultSpoken;
+    inp.addEventListener("input", () => {
+      G.voiceTexts[i] = inp.value;
+      gGenerateCode();
+    });
+    row.appendChild(lab);
+    row.appendChild(inp);
+    body.appendChild(row);
+    if (i < steps.length - 1) {
+      const gapRow = document.createElement("div");
+      gapRow.className = "field";
+      gapRow.style.marginBottom = "10px";
+      gapRow.style.marginLeft = "6px";
+      gapRow.style.paddingLeft = "12px";
+      gapRow.style.borderLeft = "3px solid var(--border)";
+      const labGap = document.createElement("label");
+      labGap.textContent = `Between step ${i + 1} and ${i + 2} (optional)`;
+      labGap.style.fontSize = "0.82rem";
+      const inpGap = document.createElement("input");
+      inpGap.type = "text";
+      inpGap.style.width = "100%";
+      inpGap.placeholder = "Extra narration after the animation above; nothing new on screen until the next step";
+      inpGap.value = G.betweenTexts[i] || "";
+      inpGap.addEventListener("input", () => {
+        G.betweenTexts[i] = inpGap.value;
+        gGenerateCode();
+      });
+      gapRow.appendChild(labGap);
+      gapRow.appendChild(inpGap);
+      body.appendChild(gapRow);
+    }
+  });
+}
 
 function gRenderAxesList() {
   const el = document.getElementById("g-axes-list");
@@ -1087,7 +1538,19 @@ function esc(s) { return s.replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
 /* ── Code generation ──────────────────────────────────────── */
 function gGenerateCode() {
   const el = document.getElementById("g-code-output");
-  if (!G.axes.length) { el.textContent = "# Add an axes to generate code."; return; }
+  const gNote = document.getElementById("g-import-note");
+  const gRun = document.getElementById("g-run-note");
+  if (!G.axes.length) {
+    el.textContent = "# Add an axes to generate code.";
+    gNote.innerHTML = "";
+    if (gRun) gRun.innerHTML = `Run with: <code>manim render -pql &lt;filename&gt;.py GraphScene</code>`;
+    return;
+  }
+
+  const gVo = document.getElementById("g-vo-cb") && document.getElementById("g-vo-cb").checked;
+  const gVoSrc = (document.getElementById("g-vo-src") && document.getElementById("g-vo-src").value) || "recorder";
+  const voTk = `, transcription_kwargs={"language": "he"}`;
+  let graphVoiceBetweenUsed = false;
 
   const usedColors = new Set();
   G.axes.forEach(a => {
@@ -1095,8 +1558,22 @@ function gGenerateCode() {
     a.pts.forEach(p => usedColors.add(p.color));
   });
 
-  let code = "from manim import *\nimport numpy as np\n\n\nclass GraphScene(Scene):\n    def construct(self):\n";
+  let code = "from manim import *\nimport numpy as np\n";
+  if (gVo) {
+    code += "from manim_voiceover import VoiceoverScene\n";
+    code += gVoSrc === "gtts"
+      ? "from manim_voiceover.services.gtts import GTTSService\n\n"
+      : "from manim_voiceover.services.recorder import RecorderService\n\n";
+  } else {
+    code += "\n";
+  }
+  code += "\nclass GraphScene(" + (gVo ? "VoiceoverScene" : "Scene") + "):\n    def construct(self):\n";
   const I = "        ";
+  if (gVo) {
+    code += gVoSrc === "gtts"
+      ? `        self.set_speech_service(GTTSService(lang="iw", transcription_model="base"${voTk}))\n`
+      : `        self.set_speech_service(RecorderService(transcription_model="base"${voTk}))\n`;
+  }
 
   G.axes.forEach((a, ai) => {
     const nm = a.name || `axes${ai + 1}`;
@@ -1134,26 +1611,81 @@ function gGenerateCode() {
     code += "\n";
   });
 
-  // Animations
-  G.axes.forEach((a, ai) => {
-    const nm = a.name || `axes${ai + 1}`;
-    let playArgs = `${a.anim}(${nm})`;
-    if (a.xLabel || a.yLabel) playArgs += `, Write(${nm}_labels)`;
-    const rt = a.rt ? `, run_time=${a.rt}` : "";
-    code += `${I}self.play(${playArgs}${rt})\n`;
+  if (gVo) {
+    const steps = gBuildGraphAnimSteps();
+    gEnsureGraphVoiceTexts(steps.length);
+    gEnsureGraphBetweenTexts(steps.length);
+    graphVoiceBetweenUsed = false;
+    const introRaw = document.getElementById("g-vo-intro") ? document.getElementById("g-vo-intro").value.trim() : "";
+    const voParts = [];
+    for (let i = 0; i < steps.length; i++) {
+      voParts.push(`<bookmark mark='s${i}' />` + gSpokenGraphStep(i, steps));
+      if (i < steps.length - 1 && G.betweenTexts[i] && String(G.betweenTexts[i]).trim()) {
+        voParts.push(`<bookmark mark='b${i}' />` + String(G.betweenTexts[i]).trim());
+        graphVoiceBetweenUsed = true;
+      }
+    }
+    const core = voParts.join(" ");
+    const voText = introRaw ? `${introRaw} ${core}` : core;
+    code += `${I}with self.voiceover(text=${pyStrTriple(voText)}) as tracker:\n`;
+    code += gGenGraphVoiceoverAnim(I, steps, G.betweenTexts);
+  } else {
+    G.axes.forEach((a, ai) => {
+      const nm = a.name || `axes${ai + 1}`;
+      let playArgs = `${a.anim}(${nm})`;
+      if (a.xLabel || a.yLabel) playArgs += `, Write(${nm}_labels)`;
+      const rt = a.rt ? `, run_time=${a.rt}` : "";
+      code += `${I}self.play(${playArgs}${rt})\n`;
 
-    a.funcs.forEach((f, fi) => {
-      code += `${I}self.play(Create(${nm}_f${fi + 1}), run_time=2)\n`;
+      a.funcs.forEach((f, fi) => {
+        code += `${I}self.play(Create(${nm}_f${fi + 1}), run_time=2)\n`;
+      });
+      a.pts.forEach((p, pi) => {
+        const pname = `${nm}_p${pi + 1}`;
+        if (p.label) code += `${I}self.play(FadeIn(${pname}), Write(${pname}_label))\n`;
+        else code += `${I}self.play(FadeIn(${pname}))\n`;
+      });
     });
-    a.pts.forEach((p, pi) => {
-      const pname = `${nm}_p${pi + 1}`;
-      if (p.label) code += `${I}self.play(FadeIn(${pname}), Write(${pname}_label))\n`;
-      else code += `${I}self.play(FadeIn(${pname}))\n`;
-    });
-  });
+  }
 
   code += `${I}self.wait(1)\n`;
   el.textContent = code;
+
+  if (gRun) {
+    gRun.innerHTML = gVo
+      ? `Run with: <code>manim render -pql &lt;filename&gt;.py GraphScene --disable_caching</code>`
+      : `Run with: <code>manim render -pql &lt;filename&gt;.py GraphScene</code>`;
+  }
+
+  const mClasses = new Set([gVo ? "VoiceoverScene" : "Scene", "Axes"]);
+  const mAnims = new Set();
+  const mConsts = new Set();
+  G.axes.forEach(a => {
+    mAnims.add(a.anim);
+    if (a.xLabel || a.yLabel) mAnims.add("Write");
+    a.funcs.forEach(f => { mAnims.add("Create"); mConsts.add(f.color); });
+    a.pts.forEach(p => {
+      mClasses.add("Dot"); mAnims.add("FadeIn"); mConsts.add(p.color);
+      if (p.label) { mClasses.add("MathTex"); mAnims.add("Write"); mConsts.add("UR"); }
+    });
+    if (a.cx !== 0 || a.cy !== 0) {
+      if (a.cx > 0) mConsts.add("RIGHT"); else if (a.cx < 0) mConsts.add("LEFT");
+      if (a.cy > 0) mConsts.add("UP"); else if (a.cy < 0) mConsts.add("DOWN");
+    }
+  });
+  const allImports = [...mClasses, ...mAnims, ...mConsts].join(", ");
+  let noteHtml = `<b>Required imports:</b> <code>from manim import *</code> &amp; <code>import numpy as np</code>`;
+  if (gVo) {
+    noteHtml += ` &amp; <code>manim_voiceover</code> (see generated imports: <code>VoiceoverScene</code> + <code>${gVoSrc === "gtts" ? "GTTSService" : "RecorderService"}</code>)`;
+  }
+  noteHtml += `<br><span style="font-size:.78rem;color:var(--text-muted)">Specific symbols used: ${allImports}</span>`;
+  if (gVo) {
+    noteHtml += `<br><span style="font-size:.78rem;color:var(--text-muted)">Voiceover: bookmarks follow axes &rarr; graphs &rarr; points. Intro is spoken before <code>s0</code>. Hebrew Whisper: <code>transcription_kwargs={&quot;language&quot;: &quot;he&quot;}</code>.</span>`;
+    if (graphVoiceBetweenUsed) {
+      noteHtml += `<br><span style="font-size:.78rem;color:var(--text-muted)"><b>Between steps:</b> optional <code>b0</code>, <code>b1</code>, … play with no new animation; then the next step starts at <code>s1</code>, <code>s2</code>, ….</span>`;
+    }
+  }
+  gNote.innerHTML = noteHtml;
 }
 
 function gFmtShift(cx, cy) {
@@ -1239,7 +1771,12 @@ function pSetRefPreset(i, val) {
   const sz = P_PRESETS[val]; r.w = sz.w; r.h = sz.h;
   pUpdate();
 }
-function pSetRefName(i, val) { P.refObjs[i].name = val; pUpdate(); }
+function pSetRefName(i, val) {
+  P.refObjs[i].name = val;
+  pRenderChainList();
+  pDrawCanvas();
+  pGenerateCode();
+}
 function pSetRefSize(i, key, val) {
   P.refObjs[i][key] = Math.max(key === "w" ? 0.2 : 0.1, parseFloat(val) || 1);
   pUpdate();
@@ -1580,18 +2117,21 @@ function pMouseUp() {
 /* ── Code generation ─────────────────────────────────────── */
 function pGenerateCode() {
   const el = document.getElementById("p-code-output");
+  const pNote = document.getElementById("p-import-note");
   P.mainObj.name = document.getElementById("p-main-name").value || "obj";
   const name = P.mainObj.name;
 
-  if (!P.chain.length) { el.textContent = "# Add positioning steps to generate code."; return; }
+  if (!P.chain.length) { el.textContent = "# Add positioning steps to generate code."; pNote.innerHTML = ""; return; }
 
   const lines = [];
+  const dirs = new Set();
   P.chain.forEach(s => {
     switch (s.type) {
       case "to_edge": {
         const b = s.buff;
         const buffStr = (b !== P_DEFAULTS.to_edge_buff) ? `, buff=${b}` : "";
         lines.push(`${name}.to_edge(${s.direction}${buffStr})`);
+        dirs.add(s.direction);
         break;
       }
       case "next_to": {
@@ -1599,6 +2139,8 @@ function pGenerateCode() {
         if (s.buff !== P_DEFAULTS.next_to_buff) args += `, buff=${s.buff}`;
         if (s.alignedEdge && s.alignedEdge !== "ORIGIN") args += `, aligned_edge=${s.alignedEdge}`;
         lines.push(`${name}.next_to(${args})`);
+        dirs.add(s.direction);
+        if (s.alignedEdge && s.alignedEdge !== "ORIGIN") dirs.add(s.alignedEdge);
         break;
       }
       case "center":
@@ -1608,12 +2150,12 @@ function pGenerateCode() {
         break;
       case "shift": {
         const parts = [];
-        if (s.dx > 0) parts.push(`RIGHT * ${s.dx}`);
-        else if (s.dx < 0) parts.push(`LEFT * ${Math.abs(s.dx)}`);
-        if (s.dy > 0) parts.push(`UP * ${s.dy}`);
-        else if (s.dy < 0) parts.push(`DOWN * ${Math.abs(s.dy)}`);
+        if (s.dx > 0) { parts.push(`RIGHT * ${s.dx}`); dirs.add("RIGHT"); }
+        else if (s.dx < 0) { parts.push(`LEFT * ${Math.abs(s.dx)}`); dirs.add("LEFT"); }
+        if (s.dy > 0) { parts.push(`UP * ${s.dy}`); dirs.add("UP"); }
+        else if (s.dy < 0) { parts.push(`DOWN * ${Math.abs(s.dy)}`); dirs.add("DOWN"); }
         if (parts.length) lines.push(`${name}.shift(${parts.join(" + ")})`);
-        else lines.push(`${name}.shift(ORIGIN)`);
+        else { lines.push(`${name}.shift(ORIGIN)`); dirs.add("ORIGIN"); }
         break;
       }
       case "set_x":
@@ -1624,10 +2166,17 @@ function pGenerateCode() {
         break;
       case "align_to":
         lines.push(`${name}.align_to(${s.ref}, ${s.direction})`);
+        dirs.add(s.direction);
         break;
     }
   });
   el.textContent = lines.join("\n");
+
+  if (dirs.size) {
+    pNote.innerHTML = `<b>Required import:</b> <code>from manim import *</code><br><span style="font-size:.78rem;color:var(--text-muted)">Specific symbols used: ${[...dirs].join(", ")}</span>`;
+  } else {
+    pNote.innerHTML = "";
+  }
 }
 
 function pCopyCode() {
@@ -1645,10 +2194,492 @@ function pUpdate() {
   pGenerateCode();
 }
 
+/* ================================================================ *
+ *  TAB 4: ANIMATIONS                                                *
+ * ================================================================ */
+
+const A = {
+  type: "fade_out",
+  fadeOut: { shift: "none" },
+  transform: { target: "obj2", transformType: "Transform" },
+  moveTo: { method: "move_to", x: 0, y: 0 },
+  rotate: { angle: 90, aboutPoint: "center", aboutX: 0, aboutY: 0 },
+  moveAlongPath: { pathType: "arc", endX: 2, endY: 1, arcAngle: 60, radius: 1, centerX: 0, centerY: 0 },
+  scale: { factor: 2, aboutPoint: "center", aboutX: 0, aboutY: 0 },
+  surroundRect: { color: "YELLOW", buff: 0.1, cornerRadius: 0.2, animType: "Create" },
+};
+
+const A_DESC = {
+  fade_out: "Fades the object out of the scene with an optional directional shift.",
+  transform: "Smoothly morphs one object into another.",
+  move_to: "Moves to an absolute position (move_to) or by a relative offset (shift).",
+  rotate: "Rotates the object by a specified angle around a point.",
+  move_along_path: "Animates the object moving along a geometric path.",
+  scale: "Scales the object up or down by a factor.",
+  surround_rect: "Creates a highlighted rectangle around the object.",
+};
+
+function aTypeChanged() {
+  A.type = document.getElementById("a-type").value;
+  aRenderParams();
+  aShowCanvas();
+  aGenCode();
+}
+
+/* ── Params rendering ────────────────────────────────────── */
+function aRenderParams() {
+  const el = document.getElementById("a-params");
+  const type = A.type;
+  let h = `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:10px">${A_DESC[type]}</p><div class="g-props">`;
+
+  switch (type) {
+    case "fade_out":
+      h += `<div class="field"><label>Shift Direction</label>
+        <select onchange="A.fadeOut.shift=this.value;aGenCode()">
+          ${["none","UP","DOWN","LEFT","RIGHT"].map(d =>
+            `<option value="${d}" ${A.fadeOut.shift===d?"selected":""}>${d==="none"?"None":d}</option>`).join("")}
+        </select></div>`;
+      break;
+
+    case "transform":
+      h += `<div class="field"><label>Target Object</label>
+        <input value="${esc(A.transform.target)}" oninput="A.transform.target=this.value;aGenCode()">
+      </div>
+      <div class="field"><label>Type</label>
+        <select onchange="A.transform.transformType=this.value;aGenCode()">
+          ${["Transform","ReplacementTransform","TransformMatchingShapes"].map(t =>
+            `<option ${A.transform.transformType===t?"selected":""}>${t}</option>`).join("")}
+        </select></div>`;
+      break;
+
+    case "move_to":
+      h += `<div class="field"><label>Method</label>
+        <select onchange="A.moveTo.method=this.value;aRenderParams();aShowCanvas();aGenCode()">
+          <option value="move_to" ${A.moveTo.method==="move_to"?"selected":""}>move_to (absolute)</option>
+          <option value="shift" ${A.moveTo.method==="shift"?"selected":""}>shift (relative)</option>
+        </select></div>
+      <div class="field"><label>${A.moveTo.method==="move_to"?"Dest x":"Offset x"}</label>
+        <input id="a-move-x" type="number" step="0.25" value="${A.moveTo.x}" onchange="A.moveTo.x=parseFloat(this.value)||0;aDrawCanvas();aGenCode()">
+      </div>
+      <div class="field"><label>${A.moveTo.method==="move_to"?"Dest y":"Offset y"}</label>
+        <input id="a-move-y" type="number" step="0.25" value="${A.moveTo.y}" onchange="A.moveTo.y=parseFloat(this.value)||0;aDrawCanvas();aGenCode()">
+      </div>`;
+      break;
+
+    case "rotate":
+      h += `<div class="field"><label>Angle (°)</label>
+        <input type="number" step="15" value="${A.rotate.angle}" onchange="A.rotate.angle=parseFloat(this.value)||0;aGenCode()">
+      </div>
+      <div class="field"><label>About</label>
+        <select onchange="A.rotate.aboutPoint=this.value;aRenderParams();aGenCode()">
+          ${["center","origin","custom"].map(v =>
+            `<option value="${v}" ${A.rotate.aboutPoint===v?"selected":""}>${v==="center"?"Object center":v==="origin"?"ORIGIN":"Custom point"}</option>`).join("")}
+        </select></div>`;
+      if (A.rotate.aboutPoint === "custom") {
+        h += `<div class="field"><label>Point x</label>
+          <input type="number" step="0.25" value="${A.rotate.aboutX}" onchange="A.rotate.aboutX=parseFloat(this.value)||0;aGenCode()">
+        </div>
+        <div class="field"><label>Point y</label>
+          <input type="number" step="0.25" value="${A.rotate.aboutY}" onchange="A.rotate.aboutY=parseFloat(this.value)||0;aGenCode()">
+        </div>`;
+      }
+      break;
+
+    case "move_along_path":
+      h += `<div class="field"><label>Path Type</label>
+        <select onchange="A.moveAlongPath.pathType=this.value;aRenderParams();aShowCanvas();aGenCode()">
+          ${["line","arc","circle"].map(v =>
+            `<option value="${v}" ${A.moveAlongPath.pathType===v?"selected":""}>${v==="line"?"Straight Line":v==="arc"?"Arc":"Circle"}</option>`).join("")}
+        </select></div>`;
+      if (A.moveAlongPath.pathType === "line" || A.moveAlongPath.pathType === "arc") {
+        h += `<div class="field"><label>End x</label>
+          <input id="a-path-ex" type="number" step="0.25" value="${A.moveAlongPath.endX}" onchange="A.moveAlongPath.endX=parseFloat(this.value)||0;aDrawCanvas();aGenCode()">
+        </div>
+        <div class="field"><label>End y</label>
+          <input id="a-path-ey" type="number" step="0.25" value="${A.moveAlongPath.endY}" onchange="A.moveAlongPath.endY=parseFloat(this.value)||0;aDrawCanvas();aGenCode()">
+        </div>`;
+      }
+      if (A.moveAlongPath.pathType === "arc") {
+        h += `<div class="field"><label>Arc Angle (°)</label>
+          <input type="number" step="15" value="${A.moveAlongPath.arcAngle}" onchange="A.moveAlongPath.arcAngle=parseFloat(this.value)||0;aGenCode()">
+        </div>`;
+      }
+      if (A.moveAlongPath.pathType === "circle") {
+        h += `<div class="field"><label>Radius</label>
+          <input type="number" step="0.25" min="0.25" value="${A.moveAlongPath.radius}" onchange="A.moveAlongPath.radius=Math.max(0.25,parseFloat(this.value)||1);aDrawCanvas();aGenCode()">
+        </div>
+        <div class="field"><label>Center x</label>
+          <input id="a-circ-cx" type="number" step="0.25" value="${A.moveAlongPath.centerX}" onchange="A.moveAlongPath.centerX=parseFloat(this.value)||0;aDrawCanvas();aGenCode()">
+        </div>
+        <div class="field"><label>Center y</label>
+          <input id="a-circ-cy" type="number" step="0.25" value="${A.moveAlongPath.centerY}" onchange="A.moveAlongPath.centerY=parseFloat(this.value)||0;aDrawCanvas();aGenCode()">
+        </div>`;
+      }
+      break;
+
+    case "scale":
+      h += `<div class="field"><label>Scale Factor</label>
+        <input type="number" step="0.25" min="0.1" value="${A.scale.factor}" onchange="A.scale.factor=parseFloat(this.value)||1;aGenCode()">
+      </div>
+      <div class="field"><label>About</label>
+        <select onchange="A.scale.aboutPoint=this.value;aRenderParams();aGenCode()">
+          ${["center","origin","custom"].map(v =>
+            `<option value="${v}" ${A.scale.aboutPoint===v?"selected":""}>${v==="center"?"Object center":v==="origin"?"ORIGIN":"Custom point"}</option>`).join("")}
+        </select></div>`;
+      if (A.scale.aboutPoint === "custom") {
+        h += `<div class="field"><label>Point x</label>
+          <input type="number" step="0.25" value="${A.scale.aboutX}" onchange="A.scale.aboutX=parseFloat(this.value)||0;aGenCode()">
+        </div>
+        <div class="field"><label>Point y</label>
+          <input type="number" step="0.25" value="${A.scale.aboutY}" onchange="A.scale.aboutY=parseFloat(this.value)||0;aGenCode()">
+        </div>`;
+      }
+      break;
+
+    case "surround_rect":
+      h += `<div class="field"><label>Color</label>
+        <select onchange="A.surroundRect.color=this.value;aGenCode()">
+          ${MANIM_COLORS.map(c => `<option value="${c.name}" ${A.surroundRect.color===c.name?"selected":""}>${c.name}</option>`).join("")}
+        </select></div>
+      <div class="field"><label>Buff</label>
+        <input type="number" step="0.05" min="0" value="${A.surroundRect.buff}" onchange="A.surroundRect.buff=parseFloat(this.value)||0;aGenCode()">
+      </div>
+      <div class="field"><label>Corner Radius</label>
+        <input type="number" step="0.05" min="0" value="${A.surroundRect.cornerRadius}" onchange="A.surroundRect.cornerRadius=parseFloat(this.value)||0;aGenCode()">
+      </div>
+      <div class="field"><label>Animation</label>
+        <select onchange="A.surroundRect.animType=this.value;aGenCode()">
+          ${["Create","Write","FadeIn"].map(t =>
+            `<option ${A.surroundRect.animType===t?"selected":""}>${t}</option>`).join("")}
+        </select></div>`;
+      break;
+  }
+
+  h += "</div>";
+  el.innerHTML = h;
+}
+
+/* ── Canvas show / hide ──────────────────────────────────── */
+function aShowCanvas() {
+  const show = A.type === "move_to" || A.type === "move_along_path";
+  document.getElementById("a-canvas-section").style.display = show ? "" : "none";
+  if (show) {
+    const t = document.querySelector("#a-canvas-section h2");
+    if (A.type === "move_to") t.textContent = A.moveTo.method === "move_to" ? "Click to set destination" : "Click to set offset direction";
+    else if (A.moveAlongPath.pathType === "circle") t.textContent = "Click to set circle center";
+    else t.textContent = "Click to set endpoint";
+    aDrawCanvas();
+  }
+}
+
+/* ── Canvas drawing ──────────────────────────────────────── */
+function aDrawCanvas() {
+  const cvs = document.getElementById("a-canvas");
+  if (!cvs) return;
+  const ctx = cvs.getContext("2d");
+  ctx.clearRect(0, 0, GC_W, GC_H);
+
+  ctx.fillStyle = "#1a1a2e";
+  ctx.fillRect(0, 0, GC_W, GC_H);
+
+  ctx.strokeStyle = "rgba(255,255,255,.06)";
+  ctx.lineWidth = 1;
+  for (let u = Math.ceil(-FRAME_W / 2); u <= Math.floor(FRAME_W / 2); u++) {
+    const [px] = m2px(u, 0);
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, GC_H); ctx.stroke();
+  }
+  for (let u = Math.ceil(-FRAME_H / 2); u <= Math.floor(FRAME_H / 2); u++) {
+    const [, py] = m2px(0, u);
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(GC_W, py); ctx.stroke();
+  }
+
+  const [ox, oy] = m2px(0, 0);
+  ctx.strokeStyle = "rgba(255,255,255,.15)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, GC_H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(GC_W, oy); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,.25)";
+  ctx.font = "9px system-ui"; ctx.textAlign = "left";
+  ctx.fillText("(0, 0)", ox + 4, oy - 4);
+
+  if (A.type === "move_to") {
+    const [dx, dy] = m2px(A.moveTo.x, A.moveTo.y);
+    ctx.strokeStyle = "rgba(67,97,238,.7)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(dx - 12, dy); ctx.lineTo(dx + 12, dy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(dx, dy - 12); ctx.lineTo(dx, dy + 12); ctx.stroke();
+    ctx.fillStyle = "rgba(67,97,238,.9)";
+    ctx.beginPath(); ctx.arc(dx, dy, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#7c9aff"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "left";
+    ctx.fillText(`(${A.moveTo.x}, ${A.moveTo.y})`, dx + 10, dy - 8);
+    if (A.moveTo.x !== 0 || A.moveTo.y !== 0) {
+      ctx.strokeStyle = "rgba(67,97,238,.35)"; ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(dx, dy); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  if (A.type === "move_along_path") {
+    const p = A.moveAlongPath;
+    if (p.pathType === "line" || p.pathType === "arc") {
+      ctx.fillStyle = "rgba(255,255,255,.4)";
+      ctx.beginPath(); ctx.arc(ox, oy, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#aaa"; ctx.font = "10px system-ui"; ctx.textAlign = "left";
+      ctx.fillText("start (object)", ox + 8, oy - 6);
+      const [ex, ey] = m2px(p.endX, p.endY);
+      ctx.fillStyle = "rgba(67,97,238,.9)";
+      ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#7c9aff"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "left";
+      ctx.fillText(`(${p.endX}, ${p.endY})`, ex + 10, ey - 8);
+      ctx.strokeStyle = "rgba(67,97,238,.4)"; ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.setLineDash([]);
+      if (p.pathType === "arc") {
+        ctx.fillStyle = "rgba(255,255,255,.2)"; ctx.font = "9px system-ui";
+        ctx.fillText(`arc ${p.arcAngle}°`, (ox + ex) / 2, (oy + ey) / 2 - 8);
+      }
+    }
+    if (p.pathType === "circle") {
+      const [cx, cy] = m2px(p.centerX, p.centerY);
+      const r = p.radius * PPU;
+      ctx.strokeStyle = "rgba(67,97,238,.4)"; ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(67,97,238,.9)";
+      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#7c9aff"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "left";
+      ctx.fillText(`center (${p.centerX}, ${p.centerY})  r=${p.radius}`, cx + 8, cy - 8);
+    }
+  }
+}
+
+/* ── Canvas click ────────────────────────────────────────── */
+const aCvs = document.getElementById("a-canvas");
+aCvs.addEventListener("click", function(e) {
+  const r = aCvs.getBoundingClientRect();
+  const px = (e.clientX - r.left) * (GC_W / r.width);
+  const py = (e.clientY - r.top) * (GC_H / r.height);
+  const [mx, my] = px2m(px, py);
+  const sx = Math.round(mx * 4) / 4;
+  const sy = Math.round(my * 4) / 4;
+
+  if (A.type === "move_to") {
+    A.moveTo.x = sx; A.moveTo.y = sy;
+    const xi = document.getElementById("a-move-x"); if (xi) xi.value = sx;
+    const yi = document.getElementById("a-move-y"); if (yi) yi.value = sy;
+  } else if (A.type === "move_along_path") {
+    if (A.moveAlongPath.pathType === "circle") {
+      A.moveAlongPath.centerX = sx; A.moveAlongPath.centerY = sy;
+      const xi = document.getElementById("a-circ-cx"); if (xi) xi.value = sx;
+      const yi = document.getElementById("a-circ-cy"); if (yi) yi.value = sy;
+    } else {
+      A.moveAlongPath.endX = sx; A.moveAlongPath.endY = sy;
+      const xi = document.getElementById("a-path-ex"); if (xi) xi.value = sx;
+      const yi = document.getElementById("a-path-ey"); if (yi) yi.value = sy;
+    }
+  }
+  aDrawCanvas();
+  aGenCode();
+});
+
+/* ── Code helpers ────────────────────────────────────────── */
+function aFmtPoint(x, y, imp) {
+  if (x === 0 && y === 0) { imp.add("ORIGIN"); return "ORIGIN"; }
+  const p = [];
+  if (x > 0) { p.push(`RIGHT * ${x}`); imp.add("RIGHT"); }
+  else if (x < 0) { p.push(`LEFT * ${Math.abs(x)}`); imp.add("LEFT"); }
+  if (y > 0) { p.push(`UP * ${y}`); imp.add("UP"); }
+  else if (y < 0) { p.push(`DOWN * ${Math.abs(y)}`); imp.add("DOWN"); }
+  return p.join(" + ") || "ORIGIN";
+}
+
+function aFmtAngle(deg, imp) {
+  if (deg === 360)  { imp.add("TAU"); return "TAU"; }
+  if (deg === 180)  { imp.add("PI"); return "PI"; }
+  if (deg === -180) { imp.add("PI"); return "-PI"; }
+  if (deg === 90)   { imp.add("PI"); return "PI / 2"; }
+  if (deg === -90)  { imp.add("PI"); return "-PI / 2"; }
+  if (deg === 270)  { imp.add("PI"); return "3 * PI / 2"; }
+  if (deg === 45)   { imp.add("PI"); return "PI / 4"; }
+  if (deg === 60)   { imp.add("PI"); return "PI / 3"; }
+  if (deg === 120)  { imp.add("PI"); return "2 * PI / 3"; }
+  imp.add("DEGREES"); return `${deg} * DEGREES`;
+}
+
+function aDefaultSpokenForType() {
+  const map = {
+    fade_out: "היעלמות",
+    transform: "טרנספורמציה",
+    move_to: "הזזה",
+    rotate: "סיבוב",
+    move_along_path: "תנועה לאורך מסלול",
+    scale: "שינוי קנה מידה",
+    surround_rect: "מסגרת מסביב",
+  };
+  return map[A.type] || "אנימציה";
+}
+
+function aOnVoiceoverToggle() {
+  const on = document.getElementById("a-vo-cb") && document.getElementById("a-vo-cb").checked;
+  const pan = document.getElementById("a-vo-panel");
+  if (pan) pan.style.display = on ? "block" : "none";
+  aGenCode();
+}
+
+function aBuildVoiceoverSnippet(preamble, playLine, voText) {
+  const ind = "    ";
+  let out = "";
+  if (preamble && preamble.trim()) out += preamble.trimEnd() + "\n";
+  out += `with self.voiceover(text=${pyStrTriple(voText)}) as tracker:\n`;
+  out += `${ind}self.wait_until_bookmark("s0")\n`;
+  out += `${ind}${gVoPlayLine(playLine, null).trim()}\n`;
+  return out;
+}
+
+/* ── Code generation ─────────────────────────────────────── */
+function aGenCode() {
+  const el = document.getElementById("a-code-output");
+  const noteEl = document.getElementById("a-import-note");
+  const runNote = document.getElementById("a-run-note");
+  const voPan = document.getElementById("a-vo-panel");
+  const voCb = document.getElementById("a-vo-cb");
+  if (voPan && voCb) voPan.style.display = voCb.checked ? "block" : "none";
+  const obj = document.getElementById("a-obj-name").value || "obj1";
+  const rtRaw = parseFloat(document.getElementById("a-run-time").value);
+  const rt = (!isNaN(rtRaw) && rtRaw > 0) ? rtRaw : null;
+  const rtStr = rt ? `, run_time=${rt}` : "";
+
+  let preamble = "";
+  let playLine = "";
+  const imp = new Set();
+
+  switch (A.type) {
+    case "fade_out": {
+      imp.add("FadeOut");
+      let args = obj;
+      if (A.fadeOut.shift !== "none") { args += `, shift=${A.fadeOut.shift}`; imp.add(A.fadeOut.shift); }
+      playLine = `self.play(FadeOut(${args})${rtStr})`;
+      break;
+    }
+    case "transform": {
+      const tt = A.transform.transformType;
+      imp.add(tt);
+      playLine = `self.play(${tt}(${obj}, ${A.transform.target || "target"})${rtStr})`;
+      break;
+    }
+    case "move_to": {
+      const dest = aFmtPoint(A.moveTo.x, A.moveTo.y, imp);
+      playLine = A.moveTo.method === "move_to"
+        ? `self.play(${obj}.animate.move_to(${dest})${rtStr})`
+        : `self.play(${obj}.animate.shift(${dest})${rtStr})`;
+      break;
+    }
+    case "rotate": {
+      imp.add("Rotate");
+      const ang = aFmtAngle(A.rotate.angle, imp);
+      let about = "";
+      if (A.rotate.aboutPoint === "origin") { imp.add("ORIGIN"); about = ", about_point=ORIGIN"; }
+      else if (A.rotate.aboutPoint === "custom") about = `, about_point=[${A.rotate.aboutX}, ${A.rotate.aboutY}, 0]`;
+      playLine = `self.play(Rotate(${obj}, angle=${ang}${about})${rtStr})`;
+      break;
+    }
+    case "move_along_path": {
+      imp.add("MoveAlongPath");
+      const p = A.moveAlongPath;
+      const prt = rt || 2;
+      if (p.pathType === "line") {
+        imp.add("Line");
+        const end = aFmtPoint(p.endX, p.endY, imp);
+        preamble = `path = Line(${obj}.get_center(), ${end})`;
+        playLine = `self.play(MoveAlongPath(${obj}, path), run_time=${prt})`;
+      } else if (p.pathType === "arc") {
+        imp.add("ArcBetweenPoints");
+        const end = aFmtPoint(p.endX, p.endY, imp);
+        const aa = aFmtAngle(p.arcAngle, imp);
+        preamble = `path = ArcBetweenPoints(${obj}.get_center(), ${end}, angle=${aa})`;
+        playLine = `self.play(MoveAlongPath(${obj}, path), run_time=${prt})`;
+      } else {
+        imp.add("Circle");
+        if (p.centerX === 0 && p.centerY === 0) {
+          preamble = `path = Circle(radius=${p.radius})`;
+        } else {
+          const ctr = aFmtPoint(p.centerX, p.centerY, imp);
+          preamble = `path = Circle(radius=${p.radius}).move_to(${ctr})`;
+        }
+        playLine = `self.play(MoveAlongPath(${obj}, path), run_time=${prt})`;
+      }
+      break;
+    }
+    case "scale": {
+      let about = "";
+      if (A.scale.aboutPoint === "origin") { imp.add("ORIGIN"); about = ", about_point=ORIGIN"; }
+      else if (A.scale.aboutPoint === "custom") about = `, about_point=[${A.scale.aboutX}, ${A.scale.aboutY}, 0]`;
+      playLine = `self.play(${obj}.animate.scale(${A.scale.factor}${about})${rtStr})`;
+      break;
+    }
+    case "surround_rect": {
+      imp.add("SurroundingRectangle"); imp.add(A.surroundRect.animType); imp.add(A.surroundRect.color);
+      const sr = A.surroundRect;
+      let args = `${obj}, color=${sr.color}`;
+      if (sr.buff !== 0.1) args += `, buff=${sr.buff}`;
+      if (sr.cornerRadius > 0) args += `, corner_radius=${sr.cornerRadius}`;
+      const rn = `${obj}_rect`;
+      preamble = `${rn} = SurroundingRectangle(${args})`;
+      playLine = `self.play(${sr.animType}(${rn})${rtStr})`;
+      break;
+    }
+  }
+
+  const voOn = document.getElementById("a-vo-cb") && document.getElementById("a-vo-cb").checked;
+  const voSrc = (document.getElementById("a-vo-src") && document.getElementById("a-vo-src").value) || "recorder";
+
+  let code = "";
+  if (voOn) {
+    const introRaw = document.getElementById("a-vo-intro") ? document.getElementById("a-vo-intro").value.trim() : "";
+    const phraseRaw = document.getElementById("a-vo-phrase") ? document.getElementById("a-vo-phrase").value.trim() : "";
+    const spoken = phraseRaw || aDefaultSpokenForType();
+    const core = `<bookmark mark='s0' />${spoken}`;
+    const voText = introRaw ? `${introRaw} ${core}` : core;
+    code = "# Voiceover: paste into VoiceoverScene.construct() after set_speech_service(...).\n";
+    code += voSrc === "gtts"
+      ? "#   from manim_voiceover import VoiceoverScene\n#   from manim_voiceover.services.gtts import GTTSService\n#   self.set_speech_service(GTTSService(lang=\"iw\", transcription_model=\"base\", transcription_kwargs={\"language\": \"he\"}))\n\n"
+      : "#   from manim_voiceover import VoiceoverScene\n#   from manim_voiceover.services.recorder import RecorderService\n#   self.set_speech_service(RecorderService(transcription_model=\"base\", transcription_kwargs={\"language\": \"he\"}))\n\n";
+    code += aBuildVoiceoverSnippet(preamble, playLine, voText).trimEnd() + "\n";
+    el.textContent = code;
+    let noteHtml = `<b>Required imports:</b> <code>from manim import *</code> &amp; <code>manim_voiceover</code> (<code>VoiceoverScene</code> + <code>${voSrc === "gtts" ? "GTTSService" : "RecorderService"}</code>)`;
+    noteHtml += `<br><span style="font-size:.78rem;color:var(--text-muted)">Manim symbols: ${[...imp].join(", ")}</span>`;
+    noteHtml += `<br><span style="font-size:.78rem;color:var(--text-muted)">Hebrew Whisper alignment: <code>transcription_kwargs={&quot;language&quot;: &quot;he&quot;}</code>. Render with <code>--disable_caching</code>.</span>`;
+    noteEl.innerHTML = noteHtml;
+    if (runNote) {
+      runNote.innerHTML = `Paste into your scene&rsquo;s <code>construct</code>. Run with <code>manim render -pql &lt;file&gt;.py YourScene --disable_caching</code>.`;
+    }
+  } else {
+    code = preamble ? `${preamble}\n${playLine}` : playLine;
+    el.textContent = code;
+    noteEl.innerHTML = imp.size
+      ? `<b>Required import:</b> <code>from manim import *</code><br><span style="font-size:.78rem;color:var(--text-muted)">Specific symbols used: ${[...imp].join(", ")}</span>`
+      : "";
+    if (runNote) {
+      runNote.innerHTML = `Paste into your scene&rsquo;s <code>construct</code>. Run with <code>manim render -pql &lt;file&gt;.py YourScene</code>.`;
+    }
+  }
+}
+
+function aCopyCode() {
+  navigator.clipboard.writeText(document.getElementById("a-code-output").textContent).then(() => {
+    const btn = document.querySelector("#tab-animations .copy-btn");
+    btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "Copy", 1500);
+  });
+}
+
 /* ── Init ─────────────────────────────────────────────────── */
 parseLine();
 gGenerateCode();
 pGenerateCode();
+aRenderParams();
+aGenCode();
 </script>
 </body>
 </html>

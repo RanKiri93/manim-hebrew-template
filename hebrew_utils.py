@@ -135,27 +135,60 @@ def _best_window(candidates: list, ref_leaves: list) -> list:
 #  Glyph partitioning (the hard part)
 # ---------------------------------------------------------------------------
 
-def _split_rtl_by_charcount(leaves: list, text_strings: list[str]) -> list[list]:
+def _split_rtl_by_refcount(leaves: list, ref_counts: list[int]) -> list[list]:
     """
-    Split *leaves* proportionally to non-whitespace character counts in
-    *text_strings*, ordered rightmost-to-leftmost (RTL reading order).
+    Split *leaves* using exact glyph counts obtained from standalone
+    ``Tex`` compilation of each segment.
 
-    More reliable than gap-based splitting when there are no math anchors
-    to constrain the partition.
+    When the sum of *ref_counts* matches ``len(leaves)`` the counts are
+    used directly.  Otherwise, the counts are used as proportional
+    weights and each split point is snapped to the nearest large
+    inter-glyph gap for accuracy.
     """
     ordered = sorted(leaves, key=lambda m: m.get_center()[0], reverse=True)
-    counts = [max(1, sum(1 for c in s if not c.isspace())) for s in text_strings]
-    total_chars = sum(counts)
-    total_glyphs = len(ordered)
-    groups: list[list] = []
+    total = len(ordered)
+
+    if len(ref_counts) <= 1:
+        return [ordered] if ref_counts else []
+
+    # Exact match — split directly by reference glyph counts
+    if sum(ref_counts) == total:
+        groups: list[list] = []
+        start = 0
+        for gc in ref_counts:
+            groups.append(ordered[start : start + gc])
+            start += gc
+        return groups
+
+    # Mismatch — use ref counts as proportional weights + gap snapping
+    gap_vals: list[float] = []
+    for i in range(len(ordered) - 1):
+        gap_vals.append(ordered[i].get_center()[0] - ordered[i + 1].get_center()[0])
+
+    groups = []
     start = 0
-    for j, cc in enumerate(counts):
-        if j == len(counts) - 1:
+    for j, rc in enumerate(ref_counts):
+        if j == len(ref_counts) - 1:
             groups.append(ordered[start:])
         else:
-            n = max(1, round(cc / total_chars * total_glyphs))
-            groups.append(ordered[start : start + n])
-            start += n
+            remaining_refs = sum(ref_counts[j:])
+            remaining_glyphs = total - start
+            n_est = max(1, round(rc / remaining_refs * remaining_glyphs))
+
+            best_n = n_est
+            best_score = -1.0
+            search = 3
+            for cn in range(max(1, n_est - search),
+                            min(remaining_glyphs, n_est + search + 1)):
+                gi = start + cn - 1
+                if 0 <= gi < len(gap_vals):
+                    score = gap_vals[gi] / (1.0 + abs(cn - n_est))
+                    if score > best_score:
+                        best_score = score
+                        best_n = cn
+
+            groups.append(ordered[start : start + best_n])
+            start += best_n
     return groups
 
 
@@ -189,6 +222,16 @@ def _split_rtl(leaves: list, k: int) -> list[list]:
         start = cut + 1
     groups.append(ordered[start:])
     return groups
+
+
+def fix_tex_glyphs(mob) -> None:
+    """Apply invisible-glyph fix to all sub-glyphs of a Tex/MathTex mobject.
+
+    Call this before animating with ``Write`` when XeLaTeX SVG paths arrive
+    with fill=0 and stroke=0 (common with sqrt bars, fraction lines, etc.).
+    """
+    for g in mob.family_members_with_points():
+        _fix_invisible_glyph(g)
 
 
 def _fix_invisible_glyph(glyph) -> None:
@@ -268,9 +311,13 @@ def partition_segments(
         math_ids.update(id(g) for g in matched)
 
     hebrew_leaves = [g for g in all_leaves if id(g) not in math_ids]
-    if not math_ixs and len(text_ixs) > 1:
+    if len(text_ixs) > 1:
         text_strs = [strings[i] for i in sorted(text_ixs)]
-        groups = _split_rtl_by_charcount(hebrew_leaves, text_strs)
+        ref_glyph_counts = []
+        for s in text_strs:
+            ref = Tex(s, tex_template=tpl)
+            ref_glyph_counts.append(len(ref.family_members_with_points()))
+        groups = _split_rtl_by_refcount(hebrew_leaves, ref_glyph_counts)
     else:
         groups = _split_rtl(hebrew_leaves, len(text_ixs))
 
