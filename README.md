@@ -9,6 +9,12 @@
 הפרויקט פותר בעיה מרכזית: Manim לא תומך מהקופסה בכתיבה מונפשת של טקסט עברי (RTL) משולב עם מתמטיקה (LTR).
 `SmartHebWrite` מנפיש כל קטע בכיוון הנכון — עברית מימין לשמאל, נוסחאות משמאל לימין — בסדר הקריאה הטבעי.
 
+<p align="center">
+  <img src="docs/readme_example.gif" alt="דוגמה: סצנת TestScene מ-Example/example.py" width="720" />
+</p>
+
+<p align="center"><sub>דוגמה מ־<code>Example/example.py</code> (<code>TestScene</code>) — ראו <code>docs/README.md</code> לרינדור מחדש של ה-GIF.</sub></p>
+
 ## מבנה הפרויקט
 
 | קובץ | תיאור |
