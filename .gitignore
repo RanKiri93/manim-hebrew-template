@@ -29,3 +29,6 @@ Attempt2/
 
 # Example scenes (local scratch)
 Example/
+
+# Local demo / experiments (not shared)
+demo_scene.py
